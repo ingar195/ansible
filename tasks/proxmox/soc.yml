@@ -1,0 +1,39 @@
+---
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: Allow SSH through firewall
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Allow Proxmox Web Interface
+  ufw:
+    rule: allow
+    port: '8006'
+    proto: tcp
+
+- name: Allow VNC/SPICE console ports
+  ufw:
+    rule: allow
+    port: 5900:5999
+    proto: tcp
+
+- name: Allow Proxmox cluster communication (corosync)
+  ufw:
+    rule: allow
+    port: 5405:5412
+    proto: udp
+
+- name: Allow Proxmox live migration
+  ufw:
+    rule: allow
+    port: 60000:60050
+    proto: tcp
+
+- name: Enable UFW
+  ufw:
+    state: enabled

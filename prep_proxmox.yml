@@ -1,0 +1,12 @@
+---
+- name: Update Proxmox Host Systems
+  hosts: proxmox_hosts
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Update
+      include_tasks: tasks/debian/update.yml
+    - name: NTP
+      include_tasks: tasks/proxmox/ntp.yml
+
+

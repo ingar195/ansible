@@ -1,0 +1,23 @@
+---
+# Update the Debian systems
+- name: Update Debian
+  hosts: all
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Include Debian update tasks
+      include_tasks: tasks/debian/update.yml
+
+- name: SOC All
+  hosts: all
+  become: yes
+  tasks:
+    - name: Apply Debian security configurations
+      include_tasks: tasks/debian/soc.yml
+      
+- name: SOC Proxmox Hosts
+  hosts: proxmox_hosts
+  become: yes
+  tasks:
+    - name: Apply Proxmox security configurations
+      include_tasks: tasks/proxmox/soc.yml

@@ -1,0 +1,46 @@
+---
+- name: Create /opt/docker/komodo_agent directory
+  file:
+    path: /opt/docker/komodo_agent
+    state: directory
+    mode: '0755'
+
+- name: Create compose.yaml for Komodo Periphery
+  copy:
+    dest: /opt/docker/komodo_agent/compose.yaml
+    content: |
+      services:
+        periphery:
+          container_name: komodo-periphery
+          image: ghcr.io/moghtech/komodo-periphery
+          labels:
+            komodo.skip: # Prevent Komodo from stopping with StopAllContainers
+          restart: unless-stopped
+          env_file: .env
+          ports:
+            - 8120:8120
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /proc:/proc
+            - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+    mode: '0644'
+  
+- name: Create .env for Komodo Periphery
+  copy:
+    dest: /opt/docker/komodo_agent/.env
+    content: |
+      KOMODO_PASSKEY={{ komodo_passkey }}
+    mode: '0644'
+
+- name: Allow Komodo Periphery port through firewall
+  ufw:
+    rule: allow
+    port: '8120'
+    proto: tcp
+
+- name: Start Komodo Periphery with docker compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/docker/komodo_agent
+    state: present
+
+

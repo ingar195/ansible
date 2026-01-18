@@ -1,0 +1,25 @@
+---
+- name: Install chrony (NTP client)
+  apt:
+    name: chrony
+    state: present
+
+- name: Configure NTP server to 0.no.pool.ntp.org
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool '
+    line: 'pool 0.no.pool.ntp.org iburst'
+    backup: yes
+  register: chrony_config
+
+- name: Restart chrony service
+  systemd:
+    name: chrony
+    state: restarted
+    enabled: yes
+  when: chrony_config.changed
+
+- name: Wait for time synchronization
+  shell: chronyc tracking
+  register: chrony_status
+  changed_when: false

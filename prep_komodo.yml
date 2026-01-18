@@ -1,0 +1,26 @@
+---
+# First update the Proxmox host systems
+- name: Prep Komodo All
+  hosts: komodo_all
+  become: yes
+  tasks:
+    - name: Update
+      include_tasks: tasks/debian/update.yml
+
+    - name: install docker 
+      include_tasks: tasks/debian/docker.yml
+
+- name: Prep Komodo nodes
+  hosts: komodo_nodes
+  become: yes
+  tasks:  
+    - name: Komodo Agents prep
+      include_tasks: tasks/debian/komodo_agents.yml
+
+- name: Prep Komodo Manager
+  hosts: komodo_servers
+  become: yes
+  tasks:
+    - name: Komodo Manager prep
+      include_tasks: tasks/debian/komodo_manager.yml
+

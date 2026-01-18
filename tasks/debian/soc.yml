@@ -1,0 +1,39 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - ufw
+      - fail2ban
+    state: present
+
+- name: Allow SSH through firewall
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+
+- name: Create fail2ban jail.local for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 1h
+      findtime = 10m
+      maxretry = 5
+      
+      [sshd]
+      enabled = true
+      port = 22
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+    mode: '0644'
+
+- name: Ensure fail2ban service is started and enabled
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes
