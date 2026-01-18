@@ -1,0 +1,51 @@
+# Inventory file for Ansible
+# This is a example file for public access
+
+# Collection of all hosts
+[all:children]
+proxmox_hosts
+komodo_nodes
+komodo_servers
+
+[all:vars]
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' # I know, dont hate me 
+ansible_user=your_username
+ansible_become=yes
+ansible_become_method=sudo
+
+# Proxmox hosts
+[proxmox_hosts]
+192.168.1.11 
+192.168.1.12
+
+[proxmox_hosts:vars]
+ansible_user=your_username
+ansible_become=yes
+backup_vm_ids=["111","222","333"]
+
+# Komodo nodes and servers
+[komodo_nodes]
+192.168.2.11
+192.168.3.12
+
+[komodo_servers]
+192.168.1.11
+
+[komodo_all:children]
+komodo_nodes
+komodo_servers
+
+[komodo_all:vars]
+# This shoud probably be in a encrypted secrets file
+komodo_passkey=some_super_long_key
+komodo_db_username=some_super_long_key
+komodo_db_password=some_super_long_key
+komodo_webhook_secret=some_super_long_key
+komodo_jwt_secret=some_super_long_key
+komodo_admin_password=some_super_long_key
+
+
+# Special services IPs
+[home_assistant]
+192.168.3.12
+
