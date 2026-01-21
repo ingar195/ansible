@@ -7,13 +7,13 @@
 - name: Allow SSH through firewall
   ufw:
     rule: allow
-    port: '22'
+    port: 22
     proto: tcp
 
 - name: Allow Proxmox Web Interface
   ufw:
     rule: allow
-    port: '8006'
+    port: 8006
     proto: tcp
 
 - name: Allow VNC/SPICE console ports
@@ -32,6 +32,12 @@
   ufw:
     rule: allow
     port: 60000:60050
+    proto: tcp
+
+- name: Allow Proxmox Backup Server
+  ufw:
+    rule: allow
+    port: 8007
     proto: tcp
 
 - name: Enable UFW

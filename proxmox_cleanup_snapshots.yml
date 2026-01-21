@@ -1,0 +1,10 @@
+---
+
+- name: Backup Proxmox VMs
+  hosts: proxmox_hosts
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Create VM snapshots before update
+      include_tasks: tasks/proxmox/snapshot_delete.yml
+

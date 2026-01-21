@@ -1,5 +1,13 @@
 ---
-# Update the Debian systems
+
+- name: Backup Proxmox VMs
+  hosts: proxmox_hosts
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Create VM snapshots before update
+      include_tasks: tasks/proxmox/snapshot.yml
+
 - name: Update Debian
   hosts: all
   become: yes
@@ -21,3 +29,4 @@
   tasks:
     - name: Apply Proxmox security configurations
       include_tasks: tasks/proxmox/soc.yml
+

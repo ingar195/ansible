@@ -1,0 +1,7 @@
+---
+- name: ha
+  hosts: home_assistant
+  become: yes
+  tasks:
+    - name: Prep home_assistant
+      include_tasks: tasks/docker/ha.yml

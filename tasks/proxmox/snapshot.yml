@@ -1,0 +1,19 @@
+---
+- name: Create snapshots for specified VMs before update
+  shell: |
+    qm snapshot {{ vm_id }} ansible_backup_{{ ansible_date_time.epoch }} --description "Automated backup before system update on {{ ansible_date_time.iso8601 }}"
+  loop: "{{ backup_vm_ids }}"
+  loop_control:
+    loop_var: vm_id
+  register: snapshot_result
+  failed_when: false
+
+- name: Display snapshot results
+  debug:
+    msg: "Created snapshot for VM {{ snapshot.vm_id }}: {{ 'Success' if snapshot.rc == 0 else 'Failed - ' + snapshot.stderr }}"
+  loop: "{{ snapshot_result.results }}"
+  loop_control:
+    loop_var: snapshot
+  when: snapshot_result.results is defined
+
+
