@@ -1,0 +1,16 @@
+---
+
+
+- name: Allow incoming Wazuh ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: '1514', proto: 'tcp', comment: 'Wazuh Agent communication' }
+    - { port: '1515', proto: 'tcp', comment: 'Wazuh Agent enrollment' }
+    - { port: '1516', proto: 'tcp', comment: 'Wazuh Cluster daemon' }
+    - { port: '55000', proto: 'tcp', comment: 'Wazuh RESTful API' }
+    - { port: '443', proto: 'tcp', comment: 'Wazuh Dashboard (HTTPS)' }
+  become: yes

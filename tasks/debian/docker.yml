@@ -58,3 +58,17 @@
     name: docker
     state: started
     enabled: yes
+
+
+- name: Enable UFW packet forwarding (replaces the sed command)
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: '^DEFAULT_FORWARD_POLICY='
+    line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+    backup: yes
+  register: ufw_forwarding
+
+- name: Reload UFW to apply forwarding changes
+  community.general.ufw:
+    state: reloaded
+  when: ufw_forwarding.changed
