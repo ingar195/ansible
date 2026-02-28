@@ -15,12 +15,12 @@
   become: yes
   tasks:  
     - name: Komodo Agents prep
-      include_tasks: tasks/debian/komodo_agents.yml
+      include_tasks: tasks/services/komodo_agents.yml
 
 - name: Prep Komodo Manager
   hosts: komodo_servers
   become: yes
   tasks:
     - name: Komodo Manager prep
-      include_tasks: tasks/debian/komodo_manager.yml
+      include_tasks: tasks/services/komodo_manager.yml
 

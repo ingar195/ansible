@@ -1,0 +1,44 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - lsb-release
+    state: present
+
+- name: Gather information about installed packages
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Download Wazuh agent package (if not installed)
+  ansible.builtin.get_url:
+    url: https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.14.3-1_amd64.deb
+    dest: /tmp/wazuh-agent_4.14.3-1_amd64.deb
+    mode: '0644'
+  when: "'wazuh-agent' not in ansible_facts.packages"
+
+- name: Install Wazuh agent via dpkg/apt with environment variables
+  ansible.builtin.apt:
+    deb: /tmp/wazuh-agent_4.14.3-1_amd64.deb
+  environment:
+    WAZUH_MANAGER: '{{ wazuh_server_domain }}'
+    WAZUH_AGENT_GROUP: 'debian,default'
+  when: "'wazuh-agent' not in ansible_facts.packages"
+
+- name: Update Manager IP in ossec.conf
+  ansible.builtin.replace:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>[^<]+</address>'
+    replace: '<address>{{ wazuh_server_domain }}</address>'
+  register: restart_wazuh
+
+- name: Restart if updated url
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    state: restarted
+  when: restart_wazuh.changed
+
+- name: Ensure Wazuh agent service is started and enabled
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    state: started
+    enabled: yes

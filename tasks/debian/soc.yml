@@ -11,6 +11,7 @@
     rule: allow
     port: '22'
     proto: tcp
+    comment: "SSH"
 
 - name: Enable UFW
   ufw:

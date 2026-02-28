@@ -22,7 +22,14 @@
   tasks:
     - name: Apply Debian security configurations
       include_tasks: tasks/debian/soc.yml
-      
+   
+- name: SOC Wazuh
+  hosts: service_wazuh
+  become: yes
+  tasks:
+    - name: Apply Wazuh security configurations
+      include_tasks: tasks/services/soc_wazuh.yml  
+
 - name: SOC Proxmox Hosts
   hosts: proxmox_hosts
   become: yes
@@ -30,3 +37,17 @@
     - name: Apply Proxmox security configurations
       include_tasks: tasks/proxmox/soc.yml
 
+
+- name: Wazuh agent
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install and setup Wazuh agent
+      include_tasks: tasks/debian/wazuh_agent.yml
+
+- name: USBIP 
+  hosts: usb_ip
+  become: yes
+  tasks:
+    - name: Install and setup USBIP
+      include_tasks: tasks/services/usbip_host.ymlr

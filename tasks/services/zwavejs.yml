@@ -1,0 +1,11 @@
+---
+- name: Allow Z-Wave JS ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: '8091', proto: 'tcp', comment: 'Z-Wave JS UI Web Interface' }
+    - { port: '3000', proto: 'tcp', comment: 'Z-Wave JS Websocket Server' }
+  become: yes

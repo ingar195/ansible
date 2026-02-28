@@ -8,6 +8,7 @@
   apt:
     name:
       - python3 
+      - htop
     state: present
 
 - name: Upgrade all packages
