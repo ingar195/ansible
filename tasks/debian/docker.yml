@@ -42,6 +42,7 @@
 - name: Update apt cache after adding Docker repository
   apt:
     update_cache: yes
+    cache_valid_time: 3600
 
 - name: Install Docker packages
   apt:

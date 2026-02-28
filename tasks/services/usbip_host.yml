@@ -1,0 +1,39 @@
+---
+# Should work, but do not have time for down time now 
+# - name: Install usbip
+#   ansible.builtin.apt:
+#     name: usbip
+#     state: present
+#     update_cache: yes
+#     cache_valid_time: 3600
+#   become: yes
+
+# - name: Load usbip kernel modules immediately
+#   community.general.modprobe:
+#     name: "{{ item }}"
+#     state: present
+#   loop:
+#     - usbip_host
+#     - vhci_hcd
+#   become: yes
+
+# - name: Persist usbip kernel modules on boot (add to /etc/modules)
+#   ansible.builtin.lineinfile:
+#     path: /etc/modules
+#     line: "{{ item }}"
+#     state: present
+#     create: yes
+#   loop:
+#     - usbip_host
+#     - vhci_hcd
+#   become: yes
+
+- name: Allow USB/IP port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: '3240', proto: 'tcp', comment: 'USB/IP server communication' }
+  become: yes
