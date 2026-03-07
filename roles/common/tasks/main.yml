@@ -49,7 +49,7 @@
   lineinfile:
     path: /etc/chrony/chrony.conf
     regexp: '^pool '
-    line: "pool {{ ntp_server }} iburst"
+    line: "pool 0.no.pool.ntp.org iburst"
     backup: yes
   notify: Restart Chrony
   tags: [ntp, setup]
