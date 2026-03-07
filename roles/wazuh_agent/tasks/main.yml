@@ -6,6 +6,8 @@
       - apt-transport-https
       - lsb-release
       - curl
+      - sysvinit-utils
+      - net-tools
     state: present
 
 - name: Create keyrings directory

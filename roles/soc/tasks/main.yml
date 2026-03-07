@@ -4,8 +4,6 @@
     name:
       - ufw
       - fail2ban
-      - sysvinit-utils
-      - net-tools
     state: present
 
 # --- FAIL2BAN SETUP ---
