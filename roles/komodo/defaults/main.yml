@@ -1,0 +1,5 @@
+---
+komodo_type: agent   # Default to agent unless specified
+komodo_timezone: 'Europe/Oslo'
+komodo_passkey: ""
+komodo_db_password: ""

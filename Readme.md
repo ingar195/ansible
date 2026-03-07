@@ -14,3 +14,15 @@ By default, these playbooks will **enable UFW and Fail2Ban**.
 
 # Todo:
 * Some taks shows changes done when they should not
+
+
+
+
+
+
+## Commands
+```bash
+# This runs ONLY tasks tagged with 'update'
+ansible-playbook site.yml --tags "update"
+
+```

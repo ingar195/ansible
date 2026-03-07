@@ -1,0 +1,13 @@
+---
+# - name: Configure Base System
+#   hosts: all
+#   become: true
+#   roles:
+#     - common
+
+- name: Setup Komodo Manager
+  hosts: komodo_all
+  roles:
+    - docker
+    - komodo
+

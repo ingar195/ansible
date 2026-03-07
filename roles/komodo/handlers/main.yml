@@ -1,0 +1,19 @@
+---
+- name: Update Apt
+  apt:
+    update_cache: yes
+
+- name: Restart Docker
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded
+
+- name: Restart Komodo
+  community.docker.docker_compose_v2:
+    project_src: "{{ komodo_dir }}"
+    state: restarted
