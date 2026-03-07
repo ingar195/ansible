@@ -24,5 +24,6 @@ By default, these playbooks will **enable UFW and Fail2Ban**.
 ```bash
 # This runs ONLY tasks tagged with 'update'
 ansible-playbook site.yml --tags "update"
-
+# Cleanup ansible generated snapshots
+ansible-playbook site.yml --tags "manual_cleanup"
 ```
