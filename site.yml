@@ -16,8 +16,3 @@
   hosts: usbip_host
   roles:
     - usb_ip
-  
-- name: Setup Proxmox
-  hosts: proxmox_hosts
-  roles:
-    - proxmox
