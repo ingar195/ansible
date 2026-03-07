@@ -1,0 +1,39 @@
+# Image version
+COMPOSE_KOMODO_IMAGE_TAG=latest
+
+# Backup path
+COMPOSE_KOMODO_BACKUPS_PATH={{ komodo_backups_path | default('/opt/docker/komodo/backups') }}
+
+# Database credentials
+KOMODO_DB_USERNAME={{ komodo_db_username }}
+KOMODO_DB_PASSWORD={{ komodo_db_password }}
+
+# Authentication
+KOMODO_PASSKEY={{ komodo_passkey }}
+KOMODO_WEBHOOK_SECRET={{ komodo_webhook_secret }}
+KOMODO_JWT_SECRET={{ komodo_jwt_secret }}
+KOMODO_JWT_TTL=1-day
+
+# Core configuration
+KOMODO_HOST=https://demo.komo.do
+KOMODO_TITLE={{ komodo_title | default('Komodo') }}
+KOMODO_FIRST_SERVER=https://periphery:8120
+KOMODO_FIRST_SERVER_NAME=Local
+KOMODO_MONITORING_INTERVAL=15-sec
+KOMODO_RESOURCE_POLL_INTERVAL=1-hr
+
+# Local auth
+KOMODO_LOCAL_AUTH=true
+KOMODO_INIT_ADMIN_USERNAME={{ komodo_admin_username | default('admin') }}
+KOMODO_INIT_ADMIN_PASSWORD={{ komodo_admin_password }}
+KOMODO_DISABLE_USER_REGISTRATION=false
+KOMODO_ENABLE_NEW_USERS=false
+
+# Periphery configuration
+PERIPHERY_ROOT_DIRECTORY=/etc/komodo
+PERIPHERY_PASSKEYS=${KOMODO_PASSKEY}
+PERIPHERY_SSL_ENABLED=true
+PERIPHERY_INCLUDE_DISK_MOUNTS=/etc/hostname
+
+# Timezone
+TZ={{ komodo_timezone | default('Europe/Oslo') }}

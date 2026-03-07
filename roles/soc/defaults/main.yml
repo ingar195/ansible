@@ -1,0 +1,12 @@
+---
+# Base allowed ports for EVERYONE
+soc_common_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }
+
+# Specific ports for Proxmox Nodes
+soc_proxmox_ports:
+  - { port: '8006', proto: 'tcp', comment: 'Proxmox Web Interface' }
+  - { port: '5900:5999', proto: 'tcp', comment: 'VNC/SPICE console' }
+  - { port: '5405:5412', proto: 'udp', comment: 'Corosync Cluster' }
+  - { port: '60000:60050', proto: 'tcp', comment: 'Live Migration' }
+  - { port: '8007', proto: 'tcp', comment: 'Proxmox Backup Server' }

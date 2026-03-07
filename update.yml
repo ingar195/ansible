@@ -1,0 +1,12 @@
+---
+- name: Pre-Update Snapshot
+  hosts: proxmox_hosts
+  roles:
+    - proxmox_snapshot
+
+- name: Patch Systems
+  hosts: all
+  become: true
+  roles:
+    - common
+  tags: [update]

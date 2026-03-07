@@ -1,0 +1,19 @@
+---
+- name: Get current date and time
+  ansible.builtin.setup:
+    filter: ansible_date_time
+
+- name: Create backup snapshot for target VMs
+  ansible.builtin.command: >
+    qm snapshot {{ item }} 
+    ansible_backup_{{ ansible_date_time.epoch }} 
+    --description "Ansible manual backup {{ ansible_date_time.iso8601 }}"
+  loop: "{{ backup_vm_ids | unique }}"
+  register: snapshot_result
+  changed_when: true
+  failed_when: false 
+
+- name: Run Manual Cleanup Logic
+  include_tasks: cleanup_manual.yml
+  when: run_manual_cleanup | default(false) | bool
+  tags: [never, manual_cleanup]

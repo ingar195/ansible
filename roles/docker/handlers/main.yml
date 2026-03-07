@@ -1,0 +1,10 @@
+---
+- name: Restart Docker
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded

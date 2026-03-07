@@ -1,0 +1,49 @@
+---
+- name: Set install directory based on role type
+  set_fact:
+    komodo_dir: "{{ '/opt/docker/komodo' if komodo_type == 'manager' else '/opt/docker/komodo_agent' }}"
+
+- name: Create Komodo directory
+  file:
+    path: "{{ komodo_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Backups directory (Manager only)
+  file:
+    path: "{{ komodo_backups_path | default('/opt/docker/komodo/backups') }}"
+    state: directory
+    mode: '0755'
+  when: komodo_type == 'manager'
+
+- name: Deploy Docker Compose file
+  template:
+    src: "compose-{{ komodo_type }}.yaml.j2"
+    dest: "{{ komodo_dir }}/compose.yaml"
+    mode: '0644'
+  notify: Restart Komodo
+
+- name: Deploy .env file
+  template:
+    src: "env-{{ komodo_type }}.j2"
+    dest: "{{ komodo_dir }}/.env"
+    mode: '0644'
+  notify: Restart Komodo
+
+- name: Allow Komodo Core port (Manager)
+  ufw:
+    rule: allow
+    port: '9120'
+    proto: tcp
+  when: komodo_type == 'manager'
+
+- name: Allow Komodo Periphery port
+  ufw:
+    rule: allow
+    port: '8120'
+    proto: tcp
+
+- name: Start Komodo
+  community.docker.docker_compose_v2:
+    project_src: "{{ komodo_dir }}"
+    state: present
