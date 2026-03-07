@@ -1,0 +1,40 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [update, always]
+
+- name: Install common packages
+  apt:
+    name:
+      - python3
+      - htop
+      - git
+      - curl
+    state: present
+  tags: [setup, packages]
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    force_apt_get: yes
+  tags: [update]
+
+- name: Remove unused packages
+  apt:
+    autoremove: yes
+    autoclean: yes
+  tags: [update]
+
+- name: Check if reboot is required
+  stat:
+    path: /var/run/reboot-required
+  register: reboot_required
+  tags: [update]
+
+- name: Notify if reboot is needed
+  debug:
+    msg: "⚠️  Reboot is required on {{ inventory_hostname }}"
+  when: reboot_required.stat.exists
+  tags: [update]
