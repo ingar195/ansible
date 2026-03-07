@@ -8,4 +8,4 @@
   loop:
     - { port: '8091', proto: 'tcp', comment: 'Z-Wave JS UI Web Interface' }
     - { port: '3000', proto: 'tcp', comment: 'Z-Wave JS Websocket Server' }
-  become: yes
+  become: true

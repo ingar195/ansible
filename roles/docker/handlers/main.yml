@@ -1,8 +1,4 @@
 ---
-- name: Update Apt
-  apt:
-    update_cache: yes
-
 - name: Restart Docker
   systemd:
     name: docker

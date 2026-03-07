@@ -38,3 +38,25 @@
     msg: "⚠️  Reboot is required on {{ inventory_hostname }}"
   when: reboot_required.stat.exists
   tags: [update]
+
+- name: Install Chrony (NTP)
+  apt:
+    name: chrony
+    state: present
+  tags: [ntp, setup]
+
+- name: Configure NTP Server
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool '
+    line: "pool {{ ntp_server }} iburst"
+    backup: yes
+  notify: Restart Chrony
+  tags: [ntp, setup]
+
+- name: Ensure Chrony is enabled and running
+  service:
+    name: chrony
+    state: started
+    enabled: yes
+  tags: [ntp, setup]

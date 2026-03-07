@@ -1,9 +1,10 @@
 ---
-# - name: Configure Base System
-#   hosts: all
-#   become: true
-#   roles:
-#     - common
+- name: Configure Base System
+  hosts: all
+  become: true
+  roles:
+    - common
+    - wazuh_agent
 
 - name: Setup Komodo Manager
   hosts: komodo_all
@@ -11,3 +12,12 @@
     - docker
     - komodo
 
+- name: Setup usbip
+  hosts: usbip_host
+  roles:
+    - usb_ip
+  
+- name: Setup Proxmox
+  hosts: proxmox_hosts
+  roles:
+    - proxmox

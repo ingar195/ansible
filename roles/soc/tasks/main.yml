@@ -1,0 +1,55 @@
+---
+- name: Install security packages
+  apt:
+    name:
+      - ufw
+      - fail2ban
+      - sysvinit-utils
+      - net-tools
+    state: present
+
+# --- FAIL2BAN SETUP ---
+- name: Create fail2ban jail.local for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 1h
+      findtime = 10m
+      maxretry = 5
+      
+      [sshd]
+      enabled = true
+      port = 22
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+    mode: '0644'
+  notify: Restart Fail2Ban
+
+- name: Ensure Fail2Ban is running
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+# --- UFW SETUP ---
+- name: Allow Common Ports (SSH)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ soc_common_ports }}"
+
+- name: Allow Proxmox Specific Ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ soc_proxmox_ports }}"
+  when: "'proxmox' in group_names"
+
+- name: Enable UFW Firewall
+  community.general.ufw:
+    state: enabled

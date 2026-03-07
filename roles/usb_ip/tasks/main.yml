@@ -37,4 +37,4 @@
   loop:
     - { port: '3240', proto: 'tcp', comment: 'USB/IP server communication' }
     - { port: '3240', proto: 'udp', comment: 'USB/IP data/discovery' }
-  become: yes
+  become: true

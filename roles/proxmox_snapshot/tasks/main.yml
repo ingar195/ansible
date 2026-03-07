@@ -12,3 +12,8 @@
   register: snapshot_result
   changed_when: true
   failed_when: false 
+
+- name: Run Manual Cleanup Logic
+  include_tasks: cleanup_manual.yml
+  when: run_manual_cleanup | default(false) | bool
+  tags: [never, manual_cleanup]

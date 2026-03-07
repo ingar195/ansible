@@ -1,0 +1,47 @@
+---
+- name: Install prerequisite packages
+  apt:
+    name:
+      - gnupg
+      - apt-transport-https
+      - lsb-release
+      - curl
+    state: present
+
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Wazuh GPG Key
+  get_url:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    dest: /etc/apt/keyrings/wazuh.asc
+    mode: '0644'
+    force: true
+
+- name: Add Wazuh Repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/wazuh.asc] https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+    filename: wazuh
+
+- name: Install Wazuh Agent
+  apt:
+    name: wazuh-agent
+    state: present
+    update_cache: yes
+
+- name: Configure Manager IP in ossec.conf
+  replace:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>.*?</address>'
+    replace: '<address>{{ wazuh_manager_ip }}</address>'
+  notify: Restart Wazuh Agent
+
+- name: Ensure Wazuh Agent is started and enabled
+  service:
+    name: wazuh-agent
+    state: started
+    enabled: yes
