@@ -4,6 +4,8 @@
     name:
       - ufw
       - fail2ban
+      - sysvinit-utils
+      - net-tools
     state: present
 
 - name: Allow SSH through firewall
