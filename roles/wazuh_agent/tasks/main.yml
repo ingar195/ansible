@@ -47,3 +47,39 @@
     name: wazuh-agent
     state: started
     enabled: yes
+
+- name: Download Microsoft GPG key
+  ansible.builtin.get_url:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    dest: /usr/share/keyrings/microsoft.gpg
+    mode: '0644'
+
+- name: Add Microsoft Repository (Debian 12)
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main"
+    state: present
+    filename: microsoft-prod
+
+- name: Install Sysmon for Linux
+  apt:
+    name: 
+      - sysmonforlinux
+    state: present
+    update_cache: yes
+
+- name: Check Sysmon service status
+  ansible.builtin.systemd:
+    name: sysmon
+  register: sysmon_service_check
+
+- name: Initialize Sysmon if not installed/active
+  ansible.builtin.command:
+    cmd: sysmon -i -accepteula
+  when: sysmon_service_check.status.ActiveState != 'active'
+  changed_when: true
+
+- name: Ensure Sysmon is enabled
+  ansible.builtin.systemd:
+    name: sysmon
+    enabled: true
+    state: started
