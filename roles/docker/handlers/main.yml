@@ -8,3 +8,7 @@
 - name: Reload UFW
   community.general.ufw:
     state: reloaded
+
+- name: Update Apt
+  apt:
+    update_cache: yes

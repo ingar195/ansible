@@ -8,7 +8,14 @@
       - curl
       - sysvinit-utils
       - net-tools
+      - rsyslog
     state: present
+
+- name: Ensure rsyslog started and enabled
+  service:
+    name: rsyslog
+    state: started
+    enabled: yes
 
 - name: Create keyrings directory
   file:

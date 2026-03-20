@@ -60,3 +60,8 @@
     state: started
     enabled: yes
   tags: [ntp, setup]
+
+- name: Set system timezone to Europe/Oslo
+  community.general.timezone:
+    name: Europe/Oslo
+  become: true
