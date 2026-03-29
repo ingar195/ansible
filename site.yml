@@ -6,6 +6,12 @@
     - common
     - wazuh_agent
 
+- name: Unattended-upgrades
+  hosts: unattended
+  become: true
+  roles:
+    - unattended
+
 - name: Setup Komodo Manager
   hosts: komodo_all
   roles:
