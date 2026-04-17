@@ -10,3 +10,6 @@ soc_proxmox_ports:
   - { port: '5405:5412', proto: 'udp', comment: 'Corosync Cluster' }
   - { port: '60000:60050', proto: 'tcp', comment: 'Live Migration' }
   - { port: '8007', proto: 'tcp', comment: 'Proxmox Backup Server' }
+  - { port: '3300', proto: 'tcp', comment: 'Ceph Monitor (v2 MSGR2)' }
+  - { port: '6789', proto: 'tcp', comment: 'Ceph Monitor (v1 MSGR1)' }
+  - { port: '6800:7300', proto: 'tcp', comment: 'Ceph OSDs / Managers / MDS' }

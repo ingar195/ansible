@@ -12,8 +12,26 @@
       - htop
       - git
       - curl
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - apt-listchanges
     state: present
   tags: [setup, packages]
+
+- name: Enable unattended-upgrades
+  ansible.builtin.debconf:
+    name: unattended-upgrades
+    question: unattended-upgrades/enable_auto_updates
+    value: "true"
+    vtype: boolean
+
+- name: Setup unattended-upgrades config
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    mode: '0644'
+  notify: Restart unattended-upgrades
 
 - name: Upgrade all packages
   apt:
@@ -65,3 +83,39 @@
   community.general.timezone:
     name: Europe/Oslo
   become: true
+
+- name: Create fail2ban jail.local for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 1h
+      findtime = 10m
+      maxretry = 5
+      
+      [sshd]
+      enabled = true
+      port = 22
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+    mode: '0644'
+  notify: Restart Fail2Ban
+
+
+- name: Allow Common Ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ common_ports }}"
+
+- name: Ensure Fail2Ban is running
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+- name: Enable UFW Firewall
+  community.general.ufw:
+    state: enabled

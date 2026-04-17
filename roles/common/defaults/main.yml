@@ -1,0 +1,4 @@
+---
+# Base allowed ports for EVERYONE
+common_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }

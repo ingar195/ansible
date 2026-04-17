@@ -3,3 +3,13 @@
   service:
     name: chrony
     state: restarted
+    
+- name: Restart Fail2Ban
+  service:
+    name: fail2ban
+    state: restarted
+
+- name: Restart unattended-upgrades
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    state: restarted

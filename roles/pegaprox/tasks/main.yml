@@ -1,0 +1,8 @@
+---
+- name: Allow PegaProx Ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ common_ports }}"

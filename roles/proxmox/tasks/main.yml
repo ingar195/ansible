@@ -1,0 +1,12 @@
+---
+- name: Allow Proxmox Specific Ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ soc_proxmox_ports }}"
+  
+- name: Enable UFW Firewall
+  community.general.ufw:
+    state: enabled
