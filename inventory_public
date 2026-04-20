@@ -6,12 +6,18 @@
 proxmox_hosts
 komodo_nodes
 komodo_servers
+mini_pc
 
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' # I know, dont hate me 
 ansible_user=your_username
 ansible_become=yes
 ansible_become_method=sudo
+wazuh_manager_ip=some.domain.com
+
+
+[mini_pc]
+192.168.2.61
 
 # Proxmox hosts
 [proxmox_hosts]
@@ -49,3 +55,6 @@ komodo_admin_password=some_super_long_key
 [home_assistant]
 192.168.3.12
 
+[home_assistant:vars]
+remote_ip=192.168.2.12
+bus_id_zigbee=1-3
