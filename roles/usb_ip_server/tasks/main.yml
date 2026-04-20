@@ -1,0 +1,59 @@
+---
+# Should work, but do not have time for down time now 
+- name: Install usbip
+  ansible.builtin.apt:
+    name: 
+      - usbip
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Allow user to run usbip via sudo without a password
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/usbip
+    content: |
+      user ALL=(ALL) NOPASSWD: /usr/sbin/usbip
+    owner: root
+    group: root
+    mode: '0440'
+    validate: visudo -cf %s
+  become: true
+
+- name: Load usbip kernel modules immediately
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - usbip_host
+    - vhci_hcd
+  become: true
+
+- name: Persist usbip kernel modules on boot (add to /etc/modules)
+  ansible.builtin.lineinfile:
+    path: /etc/modules
+    line: "{{ item }}"
+    state: present
+    create: yes
+  loop:
+    - usbip_host
+    - vhci_hcd
+  become: true
+
+- name: Ensure usbipd service is enabled and started
+  ansible.builtin.systemd:
+    name: usbipd
+    enabled: true
+    state: started
+  become: true
+
+- name: Allow USB/IP port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: '3240', proto: 'tcp', comment: 'USB/IP server communication' }
+    - { port: '3240', proto: 'udp', comment: 'USB/IP data/discovery' }
+  become: true

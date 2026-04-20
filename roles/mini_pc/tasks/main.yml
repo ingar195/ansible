@@ -1,0 +1,71 @@
+---
+# 1. Repository and Package Setup
+- name: Install dependencies
+  apt:
+    name: 
+      - wget
+      - gnupg
+      - zram-tools
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Download Azlux GPG key
+  get_url:
+    url: https://azlux.fr/repo.gpg
+    dest: /usr/share/keyrings/azlux-archive-keyring.gpg
+    mode: '0644'
+
+- name: Add Azlux repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/azlux-archive-keyring.gpg] http://packages.azlux.fr/debian/ {{ ansible_distribution_release }} main"
+    filename: azlux
+    state: present
+
+- name: Apply Debian Trixie pinning for Log2Ram
+  copy:
+    dest: /etc/apt/preferences.d/log2ram.pref
+    content: |
+      Package: log2ram
+      Pin: origin packages.azlux.fr
+      Pin-Priority: 1001
+  when: ansible_distribution_release == "trixie"
+
+# 2. Storage Longevity (Log2Ram & Journald)
+- name: Install and Enable Log2Ram
+  apt:
+    name: log2ram
+    state: present
+    update_cache: yes
+
+- name: Configure Journald (Limit to 100MB)
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?SystemMaxUse='
+    line: 'SystemMaxUse=100M'
+  notify: restart journald
+
+# 3. Memory Optimization (Swap to zRam)
+- name: Disable disk-based swap
+  shell: |
+    swapoff -a
+    sed -i '/swap/d' /etc/fstab
+  when: ansible_swaptotal_mb > 0
+
+- name: Configure zram-tools (Compressed RAM Swap)
+  copy:
+    dest: /etc/default/zramswap
+    content: |
+      ALGO=zstd
+      PERCENT=60
+      PRIORITY=100
+  notify: restart zram
+
+- name: Ensure services are started
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - log2ram
+    - zramswap

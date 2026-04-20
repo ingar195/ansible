@@ -6,12 +6,6 @@
     - common
     - wazuh_agent
 
-- name: Unattended-upgrades
-  hosts: unattended
-  become: true
-  roles:
-    - unattended
-
 - name: Setup Komodo Manager
   hosts: komodo_all
   roles:
@@ -21,4 +15,9 @@
 - name: Setup usbip
   hosts: usbip_host
   roles:
-    - usb_ip
+    - usb_ip_server
+
+- name: Setup mini PCs
+  hosts: mini_pc
+  roles:
+    - mini_pc
