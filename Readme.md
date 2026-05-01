@@ -8,6 +8,10 @@ Collection of ansible playbooks and tasks i use. Use at you own risk.
 - Ansible >= 2.15
 - Collections: community.general, community.docker
 
+## Inventory Notes
+- Keep group names aligned with playbook targets (for example: `komodo_manager_servers`, `service_wazuh`, `zwavejs`).
+- Prefer host key checking defaults (`accept-new`) instead of disabling verification entirely.
+
 ## Roles
 - **common**: Baseline server hardening and maintenance, including package updates, unattended upgrades, NTP/Chrony setup, timezone configuration, Fail2Ban, and UFW defaults.
 - **docker**: Installs Docker Engine and compose tooling from Docker's repo, then adjusts UFW forwarding so container networking works correctly.
@@ -40,3 +44,13 @@ ansible-playbook -i your_inventory_file site.yml --tags "update"
 
 # Cleanup ansible generated snapshots
 ansible-playbook -i your_inventory_file site.yml --tags "manual_cleanup"
+```
+
+## Common Tags
+- `update`: package refresh/upgrade tasks
+- `manual_cleanup`: removes old Proxmox ansible snapshots
+- `setup`: first-time provisioning tasks in roles that expose setup tags
+
+## Secrets
+- Keep secrets in Vault files under `group_vars/<group>/vault.yml` and do not commit decrypted secret files.
+- Example templates are included in this repo as `vault.example.yml` files.

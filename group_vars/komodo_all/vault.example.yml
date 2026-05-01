@@ -1,0 +1,7 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+komodo_passkey: REPLACE_ME
+komodo_db_username: REPLACE_ME
+komodo_db_password: REPLACE_ME
+komodo_webhook_secret: REPLACE_ME
+komodo_jwt_secret: REPLACE_ME
+komodo_admin_password: REPLACE_ME

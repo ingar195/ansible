@@ -40,9 +40,30 @@
     - vhci_hcd
   become: true
 
+- name: Install usbipd systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/usbipd.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=USB/IP
+      After=network.target
+
+      [Service]
+      Type=forking
+      PIDFile=/run/usbipd.pid
+      ExecStart=/usr/sbin/usbipd -D -P /run/usbipd.pid
+      ExecStop=/bin/kill -TERM $MAINPID
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  become: true
+
 - name: Ensure usbipd service is enabled and started
   ansible.builtin.systemd:
     name: usbipd
+    daemon_reload: true
     enabled: true
     state: started
   become: true

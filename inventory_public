@@ -5,8 +5,11 @@
 [all:children]
 proxmox_hosts
 komodo_nodes
-komodo_servers
+komodo_manager_servers
 mini_pc
+usbip_host
+zwavejs
+home_assistant
 
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' # I know, dont hate me 
@@ -34,21 +37,15 @@ backup_vm_ids=["111","222","333"]
 192.168.2.11
 192.168.3.12
 
-[komodo_servers]
+[komodo_manager_servers]
 192.168.1.11
 
 [komodo_all:children]
 komodo_nodes
-komodo_servers
+komodo_manager_servers
 
 [komodo_all:vars]
-# This shoud probably be in a encrypted secrets file
-komodo_passkey=some_super_long_key
-komodo_db_username=some_super_long_key
-komodo_db_password=some_super_long_key
-komodo_webhook_secret=some_super_long_key
-komodo_jwt_secret=some_super_long_key
-komodo_admin_password=some_super_long_key
+komodo_host=192.168.1.11
 
 
 # Special services IPs
@@ -58,3 +55,12 @@ komodo_admin_password=some_super_long_key
 [home_assistant:vars]
 remote_ip=192.168.2.12
 bus_id_zigbee=1-3
+
+[service_wazuh]
+192.168.3.127
+
+[usbip_host]
+192.168.2.61
+
+[zwavejs]
+192.168.2.61
