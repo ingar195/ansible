@@ -2,3 +2,5 @@ vault.yml
 a.*
 hosts
 inventory
+group_vars/**/vault.yml
+!group_vars/**/vault.example.yml

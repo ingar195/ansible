@@ -1,5 +1,5 @@
 # Image version
-COMPOSE_KOMODO_IMAGE_TAG=latest
+COMPOSE_KOMODO_IMAGE_TAG=2
 
 # Backup path
 COMPOSE_KOMODO_BACKUPS_PATH={{ komodo_backups_path | default('/opt/docker/komodo/backups') }}
@@ -15,7 +15,7 @@ KOMODO_JWT_SECRET={{ komodo_jwt_secret }}
 KOMODO_JWT_TTL=1-day
 
 # Core configuration
-KOMODO_HOST=https://demo.komo.do
+KOMODO_HOST=https://{{ komodo_host }}:8120
 KOMODO_TITLE={{ komodo_title | default('Komodo') }}
 KOMODO_FIRST_SERVER=https://periphery:8120
 KOMODO_FIRST_SERVER_NAME=Local
