@@ -1,18 +1,19 @@
 ---
 - name: Get list of snapshots for each VM
   shell: |
-    /usr/sbin/qm listsnapshot {{ item }} | grep '`->' | awk '{print $2}' | grep ansible_backup_
-  loop: "{{ backup_vm_ids }}"
+    /usr/sbin/qm listsnapshot {{ item }} | awk '/ansible_backup_/ {print $2}' | sort
+  loop: "{{ backup_vm_ids | unique }}"
   register: snapshot_list
   failed_when: false
   changed_when: false
 
 - name: Delete old snapshots (keep only the last one)
   shell: |
-    /usr/sbin/qm delsnapshot {{ item.0.item }} {{ item.1 }}
-  loop: "{{ snapshot_list.results | subelements('stdout_lines', skip_missing=True) }}"
-  when: 
-    - item.0.stdout_lines is defined
-    - item.0.stdout_lines | length > 0
+    echo "{{ item.stdout_lines[:-1] | join(' ') }}" | xargs -n1 -r -I{} /usr/sbin/qm delsnapshot {{ item.item }} {}
+  loop: "{{ snapshot_list.results }}"
+  when:
+    - item.stdout_lines is defined
+    - item.stdout_lines | length > 1
   register: delete_result
   failed_when: false
+  changed_when: item.stdout_lines | length > 1
