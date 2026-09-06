@@ -1,0 +1,37 @@
+---
+- name: Create MinIO directory
+  file:
+    path: "{{ minio_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy MinIO Docker Compose file
+  template:
+    src: compose-minio.yaml.j2
+    dest: "{{ minio_dir }}/compose.yaml"
+    mode: '0644'
+  notify: Restart MinIO
+
+- name: Deploy MinIO .env file
+  template:
+    src: env-minio.j2
+    dest: "{{ minio_dir }}/.env"
+    mode: '0644'
+  notify: Restart MinIO
+
+- name: Allow MinIO API port
+  ufw:
+    rule: allow
+    port: '9000'
+    proto: tcp
+
+- name: Allow MinIO Console port
+  ufw:
+    rule: allow
+    port: '9001'
+    proto: tcp
+
+- name: Start MinIO
+  community.docker.docker_compose_v2:
+    project_src: "{{ minio_dir }}"
+    state: present

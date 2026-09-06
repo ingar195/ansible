@@ -1,0 +1,3 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+minio_root_user: REPLACE_ME
+minio_root_password: REPLACE_ME

@@ -26,3 +26,10 @@
   hosts: mini_pc
   roles:
     - mini_pc
+
+- name: Setup MinIO for Terraform state
+  hosts: minio_hosts
+  become: true
+  roles:
+    - docker
+    - minio
