@@ -1,4 +1,12 @@
 ---
+- name: Ensure a DNS resolver is configured
+  lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver {{ ansible_default_ipv4.gateway }}"
+    create: yes
+    mode: '0644'
+  tags: [always]
+
 - name: Update apt cache
   apt:
     update_cache: yes

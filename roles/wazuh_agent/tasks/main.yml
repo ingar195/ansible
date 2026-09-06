@@ -31,10 +31,14 @@
     force: true
 
 - name: Add Wazuh Repository
-  apt_repository:
-    repo: "deb [signed-by=/etc/apt/keyrings/wazuh.asc] https://packages.wazuh.com/4.x/apt/ stable main"
+  ansible.builtin.deb822_repository:
+    name: wazuh
+    types: deb
+    uris: https://packages.wazuh.com/4.x/apt/
+    suites: stable
+    components: main
+    signed_by: /etc/apt/keyrings/wazuh.asc
     state: present
-    filename: wazuh
 
 - name: Install Wazuh Agent
   apt:
@@ -62,10 +66,15 @@
     mode: '0644'
 
 - name: Add Microsoft Repository (Debian 12)
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main"
+  ansible.builtin.deb822_repository:
+    name: microsoft-prod
+    types: deb
+    uris: https://packages.microsoft.com/debian/12/prod
+    suites: bookworm
+    components: main
+    architectures: amd64
+    signed_by: /usr/share/keyrings/microsoft.gpg
     state: present
-    filename: microsoft-prod
 
 - name: Install Sysmon for Linux
   apt:
