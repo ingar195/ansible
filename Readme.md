@@ -39,6 +39,9 @@ By default, these playbooks will **enable UFW and Fail2Ban**.
 # Run normally
 ansible-playbook -i your_inventory_file playbook_name # add -Kk to use password auth
 
+# Run only one group
+ansible-playbook -i your_inventory_file playbook_name --limit group_name
+
 # This runs ONLY tasks tagged with 'update'
 ansible-playbook -i your_inventory_file site.yml --tags "update"
 
