@@ -17,9 +17,13 @@
     mode: '0644'
 
 - name: Add Azlux repository
-  apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/azlux-archive-keyring.gpg] http://packages.azlux.fr/debian/ {{ ansible_distribution_release }} main"
-    filename: azlux
+  ansible.builtin.deb822_repository:
+    name: azlux
+    types: deb
+    uris: http://packages.azlux.fr/debian/
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: main
+    signed_by: /usr/share/keyrings/azlux-archive-keyring.gpg
     state: present
 
 - name: Apply Debian Trixie pinning for Log2Ram
@@ -29,7 +33,7 @@
       Package: log2ram
       Pin: origin packages.azlux.fr
       Pin-Priority: 1001
-  when: ansible_distribution_release == "trixie"
+  when: ansible_facts['distribution_release'] == "trixie"
 
 # 2. Storage Longevity (Log2Ram & Journald)
 - name: Install and Enable Log2Ram
@@ -50,7 +54,7 @@
   shell: |
     swapoff -a
     sed -i '/swap/d' /etc/fstab
-  when: ansible_swaptotal_mb > 0
+  when: ansible_facts['swaptotal_mb'] > 0
 
 - name: Configure zram-tools (Compressed RAM Swap)
   copy:
