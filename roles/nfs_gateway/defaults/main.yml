@@ -1,0 +1,16 @@
+---
+ceph_mon_hosts:
+  - 10.11.0.11
+  - 10.11.0.12
+  - 10.11.0.13
+cephfs_name: shared-data
+
+# One entry per exported subdirectory. `clients` restricts the export to
+# specific host IPs — a host not listed here cannot mount that export at all.
+# Example:
+# nfs_exports:
+#   - export_id: 10
+#     pseudo_path: /komodo-manager
+#     cephfs_path: /komodo-manager
+#     clients: ["10.11.0.51"]
+nfs_exports: []

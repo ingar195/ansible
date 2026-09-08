@@ -1,0 +1,6 @@
+---
+nfs_exports:
+  - export_id: 10
+    pseudo_path: /komodo-manager
+    cephfs_path: /komodo-manager
+    clients: ["10.11.0.51"]

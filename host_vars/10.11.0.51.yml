@@ -1,0 +1,5 @@
+---
+# Komodo manager (pve-mgr01) — MongoDB data lives on the shared-data CephFS
+# via the Ganesha NFS export /komodo-manager, not on this VM's local disk.
+komodo_nfs_server: 10.11.0.53
+komodo_nfs_export_path: /komodo-manager
