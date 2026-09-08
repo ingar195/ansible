@@ -2,6 +2,8 @@
 
 Collection of ansible playbooks and tasks i use. Use at you own risk.
 
+VM provisioning lives in a separate repo: [github.com/ingar195/terraform](https://github.com/ingar195/terraform). This repo only configures hosts once they already exist.
+
 ## Prerequisites
 - Debian/Ubuntu targets
 - Python installed
@@ -18,6 +20,8 @@ Collection of ansible playbooks and tasks i use. Use at you own risk.
 - **homeassistant**: Currently only refreshes apt cache and acts as a minimal placeholder for future Home Assistant host-specific setup.
 - **komodo**: Deploys Komodo manager/agent Docker Compose stacks with environment files, opens required ports, and starts services.
 - **mini_pc**: Optimizes Mini PC reliability and storage endurance with log2ram, journald limits, and zram-based swap configuration.
+- **minio**: Deploys MinIO via Docker Compose, used as the S3-compatible remote state backend for the Terraform repo.
+- **nfs_gateway**: Runs NFS-Ganesha (Ceph-backed), exporting one subdirectory per host/service with per-export IP allowlists.
 - **pegaprox**: Opens and manages firewall rules for PegaProx-related services using the shared allowed-port definitions.
 - **proxmox**: Applies Proxmox-specific firewall rules and ensures UFW is enabled on Proxmox hosts.
 - **proxmox_snapshot**: Creates timestamped VM snapshots for listed Proxmox VMs and optionally runs manual snapshot cleanup tasks.
@@ -57,3 +61,4 @@ ansible-playbook -i your_inventory_file site.yml --tags "manual_cleanup"
 ## Secrets
 - Keep secrets in Vault files under `group_vars/<group>/vault.yml` and do not commit decrypted secret files.
 - Example templates are included in this repo as `vault.example.yml` files.
+- Encrypt/decrypt vault files with `./crypt.sh` (encrypt) / `./crypt.sh d` (decrypt).
