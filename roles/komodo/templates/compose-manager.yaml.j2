@@ -48,5 +48,20 @@ services:
 
 volumes:
   # Mongo
+{% if komodo_nfs_server is defined %}
+  mongo-data:
+    driver: local
+    driver_opts:
+      type: nfs4
+      o: addr={{ komodo_nfs_server }},rw,vers=4.2
+      device: ":{{ komodo_nfs_export_path }}/mongo-data"
+  mongo-config:
+    driver: local
+    driver_opts:
+      type: nfs4
+      o: addr={{ komodo_nfs_server }},rw,vers=4.2
+      device: ":{{ komodo_nfs_export_path }}/mongo-config"
+{% else %}
   mongo-data:
   mongo-config:
+{% endif %}

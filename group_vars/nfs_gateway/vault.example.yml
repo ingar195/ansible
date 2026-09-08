@@ -1,0 +1,4 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+# Created via: ceph auth get-or-create client.nfs-gw mon 'allow r' mds 'allow rw' osd 'allow rw tag cephfs data=shared-data'
+ceph_nfs_gw_client_name: client.nfs-gw
+ceph_nfs_gw_client_key: REPLACE_ME

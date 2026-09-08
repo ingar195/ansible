@@ -1,0 +1,46 @@
+---
+- name: Install Ceph client and NFS-Ganesha packages
+  apt:
+    name:
+      - ceph-common
+      - nfs-ganesha
+      - nfs-ganesha-ceph
+    state: present
+    update_cache: yes
+
+- name: Ensure /etc/ceph directory exists
+  file:
+    path: /etc/ceph
+    state: directory
+    mode: '0755'
+
+- name: Deploy ceph.conf
+  template:
+    src: ceph.conf.j2
+    dest: /etc/ceph/ceph.conf
+    mode: '0644'
+
+- name: Deploy Ceph client keyring
+  template:
+    src: ceph.keyring.j2
+    dest: "/etc/ceph/ceph.{{ ceph_nfs_gw_client_name }}.keyring"
+    mode: '0600'
+
+- name: Deploy ganesha.conf
+  template:
+    src: ganesha.conf.j2
+    dest: /etc/ganesha/ganesha.conf
+    mode: '0644'
+  notify: Restart NFS-Ganesha
+
+- name: Allow NFS port
+  ufw:
+    rule: allow
+    port: '2049'
+    proto: tcp
+
+- name: Ensure NFS-Ganesha is enabled and running
+  service:
+    name: nfs-ganesha
+    state: started
+    enabled: yes

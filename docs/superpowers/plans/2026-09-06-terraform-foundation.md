@@ -39,6 +39,25 @@ Even though Proxmox's VM config correctly received `nameserver=10.12.0.1` (confi
 
 `terraform init -backend-config=backend.hcl` (unquoted) failed with `Too many command line arguments. Did you mean to use -chdir?` when run via this session's PowerShell tool — a PowerShell/argument-passing quirk, not a real Terraform error. Fix: quote the value explicitly, `terraform init -backend-config="backend.hcl"`.
 
+### Known issue encountered: external MAC-based firewall rules break on VM recreation
+
+After destroying and recreating the Komodo manager VM (same VMID, same IP) as
+a real test, its Komodo agents (`mini01`, `pve-docker01`, `pve-docker02`)
+showed as unreachable — TCP connections to their periphery port (8120)
+timed out entirely from the manager. Not a Komodo/Ansible/Terraform config
+issue: root cause was the user's **UniFi firewall**, which had a rule keyed
+to the *old* VM's MAC address (Terraform's clone generates a fresh MAC every
+time, unlike the long-lived original VM). Fixed by updating the UniFi rule.
+
+**For any host known to have an external MAC-based rule** (firewall,
+switch port security, static DHCP/ARP binding, etc.), the safer fix is
+pinning the original MAC address in the Terraform module call (the
+`bpg/proxmox` provider's `network_device` block supports a `mac_address`
+argument) rather than relying on remembering to update external rules after
+every recreation — this wasn't done for the Komodo manager this time (fixed
+in UniFi instead, at the user's choice), but is worth adding to the module
+as an optional variable if this pattern recurs.
+
 ### Known issue encountered: orphaned VM disk reference after a failed clone
 
 The very first `terraform apply` for the MinIO VM failed because the module's `disk_size` default (20GB) was smaller than the template's actual disk (32GB) — Proxmox cannot shrink disks on clone. That failure left Proxmox's VM config referencing a disk (`vm_storage:vm-510-disk-0`) that no longer actually existed in Ceph (error: `rbd: error opening image ... No such file or directory`), which then blocked every cleanup path: `terraform destroy` (taint-triggered replace), Proxmox UI "Remove" (even after detaching to "unused disk"), and a direct Proxmox API config-delete all failed the same way, because each tries to verify/clean up the disk in storage first.

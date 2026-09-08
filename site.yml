@@ -33,3 +33,9 @@
   roles:
     - docker
     - minio
+
+- name: Setup NFS-Ganesha gateway
+  hosts: nfs_gateway
+  become: true
+  roles:
+    - nfs_gateway
