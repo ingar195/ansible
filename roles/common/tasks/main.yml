@@ -2,7 +2,7 @@
 - name: Ensure a DNS resolver is configured
   lineinfile:
     path: /etc/resolv.conf
-    line: "nameserver {{ ansible_default_ipv4.gateway }}"
+    line: "nameserver {{ ansible_facts['default_ipv4']['gateway'] }}"
     create: yes
     mode: '0644'
   tags: [always]

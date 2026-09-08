@@ -15,7 +15,7 @@
 - Terraform >= 1.6 (required for the `endpoints` map syntax in the S3 backend block).
 - Provider `bpg/proxmox`, version constraint `>= 0.66, < 1.0.0`.
 - Proxmox API endpoint uses a self-signed cert → provider must set `insecure = true`.
-- Cloud-init template: VMID `101`, node `pve01` (`10.11.0.11`).
+- Cloud-init template: VMID `101`, node `pve02` (rebuilt 2026-09-08 — the original `pve01`-hosted template was destroyed and replaced; see "known issue: clone.node_name is create-time-only" below for why existing resources still reference the old node). Disk on shared `vm_storage` (Ceph), not node-local storage. A sysprep script for prepping this template before re-sealing it lives at `scripts/template-sysprep.sh` in the ansible repo.
 - VM disks target Proxmox storage ID `vm_storage` (Ceph RBD, shared, content type `Disk image`).
 - CPU type: the module sets `cpu_type` (default `x86-64-v2-AES`), overriding Proxmox's `qemu64` default — `qemu64` lacks x86-64-v2 instructions (SSE4.2 etc.) that modern container images' glibc requires, found via a real crash (MinIO container looping with "Fatal glibc error: CPU does not support x86-64-v2"). Requires a VM reboot to take effect once changed.
 - Network: bridge `vmbr0`, no VLAN tag, on the `10.11.0.x` segment. DNS: the module defaults to using the gateway itself as the resolver (`dns_servers` variable, defaults to `[var.gateway]`) — confirmed this network's gateway does resolve DNS. Cloud-init's `initialization` block must include a `dns { servers = [...] }` sub-block or VMs get no resolver at all (found via a real failure: apt couldn't reach `deb.debian.org` on the first-created VM).
@@ -38,6 +38,27 @@ Even though Proxmox's VM config correctly received `nameserver=10.12.0.1` (confi
 ### Known issue encountered: PowerShell mangles unquoted `-backend-config=file` args
 
 `terraform init -backend-config=backend.hcl` (unquoted) failed with `Too many command line arguments. Did you mean to use -chdir?` when run via this session's PowerShell tool — a PowerShell/argument-passing quirk, not a real Terraform error. Fix: quote the value explicitly, `terraform init -backend-config="backend.hcl"`.
+
+### Known issue encountered: `clone.node_name` is create-time-only — don't update it on existing resources
+
+The template VM was rebuilt and moved from `pve01` (VMID 101, original) to
+`pve02` (VMID 101, rebuilt — old one deleted, a new one created via
+`qm clone`/manual process and re-flagged as a template; disk correctly
+lives on the shared `vm_storage` Ceph pool, not node-local storage).
+Updating `template_node` in the shared module usage for the *already-created*
+VMs (`komodo_manager.tf`, `nfs_gateway.tf`, `bootstrap/main.tf`) to match —
+seemed like the "correct" thing to do — actually produced a `terraform plan`
+showing **destroy-and-recreate** for both `komodo_manager` and `nfs_gateway`,
+caught before applying. Root cause: `clone { node_name = ... }` is a
+create-time-only/ForceNew attribute in the `bpg/proxmox` provider — Terraform
+re-clones the resource if this changes, it doesn't just "note" the new value.
+
+**Rule going forward:** `template_vm_id`/`template_node` in a VM's Terraform
+config only matter at the moment that specific resource is first created.
+For already-existing resources, leave them as whatever they were when
+created (even if factually stale/historical) — changing them does nothing
+useful and risks an unwanted destroy+recreate. Only use the *current*
+template location for genuinely new resource definitions.
 
 ### Known issue encountered: external MAC-based firewall rules break on VM recreation
 
