@@ -1,6 +1,24 @@
 ---
+# PBS backup of the whole shared-data CephFS tree, pushed from this VM.
+pbs_server: "10.11.0.31"
+pbs_datastore: cephfs-data
+pbs_fingerprint: "75:E8:9F:F0:E4:9C:76:DF:17:B8:A3:C1:3F:D9:A6:EE:AF:4D:F8:AB:F3:82:A0:68:9B:F9:F9:13:68:9C:C2:93"
+pbs_backup_token_id: "nfs-gw-backup@pbs!ceph-fs"
+
 nfs_exports:
   - export_id: 10
     pseudo_path: /komodo-manager
     cephfs_path: /komodo-manager
     clients: ["10.11.0.51"]
+  - export_id: 20
+    pseudo_path: /zwavejs
+    cephfs_path: /zwavejs
+    clients: ["10.13.0.61"]
+  - export_id: 30
+    pseudo_path: /npm
+    cephfs_path: /npm
+    clients: ["10.12.0.11"]
+  - export_id: 40
+    pseudo_path: /pve-docker-int01
+    cephfs_path: /pve-docker-int01
+    clients: ["10.13.0.12"]

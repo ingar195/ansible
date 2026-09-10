@@ -3,3 +3,48 @@
   apt:
     update_cache: yes
     cache_valid_time: 3600
+
+- name: Install usbip client
+  ansible.builtin.apt:
+    name: usbip
+    state: present
+  when: bus_id_zigbee is defined
+
+- name: Load vhci-hcd kernel module immediately
+  community.general.modprobe:
+    name: vhci_hcd
+    state: present
+  when: bus_id_zigbee is defined
+
+- name: Persist vhci-hcd kernel module on boot
+  ansible.builtin.lineinfile:
+    path: /etc/modules
+    line: vhci_hcd
+    state: present
+    create: yes
+  when: bus_id_zigbee is defined
+
+- name: Deploy Zigbee USB/IP attach script
+  ansible.builtin.template:
+    src: usbip-attach-zigbee.sh.j2
+    dest: /usr/local/bin/usbip-attach-zigbee.sh
+    mode: '0755'
+  when: bus_id_zigbee is defined
+
+- name: Deploy Zigbee USB/IP attach systemd service
+  ansible.builtin.template:
+    src: usbip-attach-zigbee.service.j2
+    dest: /etc/systemd/system/usbip-attach-zigbee.service
+    mode: '0644'
+  when: bus_id_zigbee is defined
+  notify: Reload systemd
+
+- meta: flush_handlers
+
+- name: Enable and start Zigbee USB/IP attach service
+  ansible.builtin.systemd:
+    name: usbip-attach-zigbee.service
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: bus_id_zigbee is defined

@@ -39,3 +39,17 @@
   become: true
   roles:
     - nfs_gateway
+    - pbs_backup
+
+- name: Setup DMZ PC
+  hosts: dmz_pc
+  become: true
+  roles:
+    - docker
+    - npm
+
+- name: Setup Home Assistant host (Zigbee USB/IP attach)
+  hosts: home_assistant
+  become: true
+  roles:
+    - homeassistant

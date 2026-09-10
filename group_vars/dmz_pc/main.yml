@@ -1,0 +1,5 @@
+---
+npm_letsencrypt_email: ingar@megarden.no
+
+npm_nfs_server: 10.11.0.53
+npm_nfs_export_path: /npm

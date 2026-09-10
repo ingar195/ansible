@@ -1,0 +1,21 @@
+---
+npm_data_dir: /opt/docker/proxymanager
+
+# Routing rules, versioned as code instead of living only in NPM's SQLite DB.
+# ssl: true requests a fresh Let's Encrypt cert via the API (old certs are
+# never migrated -- cheap to reissue, not worth preserving).
+npm_proxy_hosts:
+  - domain: esp.angry.fish
+    forward_host: 10.13.0.42
+    forward_port: 6052
+    ssl: false
+  - domain: nr.angry.fish
+    forward_host: 10.13.0.12
+    forward_port: 1880
+    # Not externally reachable yet post-recreation (2026-09-09) -- flip back
+    # to true once reachability is confirmed, then rerun the playbook.
+    ssl: false
+  - domain: home.angry.fish
+    forward_host: 10.13.0.12
+    forward_port: 3050
+    ssl: false

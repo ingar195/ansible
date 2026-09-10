@@ -1,0 +1,31 @@
+services:
+  npm:
+    container_name: npm
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+
+volumes:
+{% if npm_nfs_server is defined %}
+  npm-data:
+    driver: local
+    driver_opts:
+      type: nfs4
+      o: addr={{ npm_nfs_server }},rw,vers=4.2
+      device: ":{{ npm_nfs_export_path }}/data"
+  npm-letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs4
+      o: addr={{ npm_nfs_server }},rw,vers=4.2
+      device: ":{{ npm_nfs_export_path }}/letsencrypt"
+{% else %}
+  npm-data:
+  npm-letsencrypt:
+{% endif %}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup CephFS shared-data to Proxmox Backup Server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pbs-backup.env
+ExecStart=/usr/bin/proxmox-backup-client backup {{ pbs_backup_archive_name }}.pxar:{{ pbs_backup_cephfs_mount }} --backup-id {{ pbs_backup_id }}
+OnFailure=pbs-backup-notify.service

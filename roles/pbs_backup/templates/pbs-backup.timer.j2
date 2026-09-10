@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly CephFS backup to PBS
+
+[Timer]
+OnCalendar={{ pbs_backup_schedule }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
