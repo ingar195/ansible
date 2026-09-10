@@ -1,0 +1,184 @@
+---
+- name: Install nfs-common (needed for Docker's NFS volume driver)
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+  when: npm_nfs_server is defined
+
+- name: Ensure NPM data directory exists
+  ansible.builtin.file:
+    path: "{{ npm_data_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Allow NPM ports (80/443 public, 81 admin UI)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - '80'
+    - '443'
+    - '81'
+
+- name: Deploy NPM compose file
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ npm_data_dir }}/compose.yaml"
+    mode: '0644'
+
+- name: Start NPM
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ npm_data_dir }}"
+  changed_when: true
+
+- name: Wait for NPM API to come up
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/"
+    status_code: 200
+  register: npm_api_check
+  until: npm_api_check.status == 200
+  retries: 30
+  delay: 5
+
+- name: Check whether NPM has already been bootstrapped (custom admin exists)
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/tokens"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ npm_admin_email }}"
+      secret: "{{ npm_admin_password }}"
+    status_code: [200, 400, 401, 422]
+  register: npm_login_existing
+
+- name: Bootstrap admin account (first run only -- NPM ships no default user;
+    the first POST to /api/users, unauthenticated, creates it directly)
+  when: npm_login_existing.status != 200
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/users"
+    method: POST
+    body_format: json
+    body:
+      name: admin
+      nickname: admin
+      email: "{{ npm_admin_email }}"
+      roles: [admin]
+      is_disabled: false
+      auth:
+        type: password
+        secret: "{{ npm_admin_password }}"
+    status_code: 200
+
+- name: Authenticate as NPM admin
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/tokens"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ npm_admin_email }}"
+      secret: "{{ npm_admin_password }}"
+    status_code: 200
+  register: npm_login
+
+- name: List existing certificates
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/nginx/certificates"
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    status_code: 200
+  register: npm_existing_certs
+
+- name: Request fresh Let's Encrypt certificates for hosts that need SSL and don't have one yet
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/nginx/certificates"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    body_format: json
+    body:
+      provider: letsencrypt
+      domain_names: ["{{ item.domain }}"]
+      meta: {}
+    status_code: [201, 400]
+  register: npm_certs
+  loop: >-
+    {{
+      npm_proxy_hosts
+      | selectattr('ssl', 'equalto', true)
+      | rejectattr('domain', 'in', npm_existing_certs.json | map(attribute='domain_names') | sum(start=[]))
+      | list
+    }}
+  loop_control:
+    label: "{{ item.domain }}"
+
+- name: List existing proxy hosts
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/nginx/proxy-hosts"
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    status_code: 200
+  register: npm_existing_proxy_hosts
+
+- name: Combine existing certs with any just created
+  ansible.builtin.set_fact:
+    npm_all_certs: "{{ npm_existing_certs.json + (npm_certs.results | default([]) | rejectattr('skipped', 'defined') | map(attribute='json') | list) }}"
+
+- name: Build domain -> certificate_id lookup
+  ansible.builtin.set_fact:
+    npm_cert_by_domain: "{{ dict(npm_all_certs | map(attribute='domain_names') | map('first') | zip(npm_all_certs | map(attribute='id')) | list) }}"
+
+- name: Create proxy hosts that don't exist yet
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/nginx/proxy-hosts"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    body_format: json
+    body:
+      domain_names: ["{{ item.domain }}"]
+      forward_scheme: http
+      forward_host: "{{ item.forward_host }}"
+      forward_port: "{{ item.forward_port }}"
+      access_list_id: 0
+      certificate_id: "{{ npm_cert_by_domain[item.domain] | default(0) if item.ssl else 0 }}"
+      ssl_forced: "{{ item.ssl }}"
+      block_exploits: false
+      allow_websocket_upgrade: true
+      http2_support: false
+      hsts_enabled: false
+      meta: {}
+    status_code: 201
+  loop: >-
+    {{
+      npm_proxy_hosts
+      | rejectattr('domain', 'in', npm_existing_proxy_hosts.json | map(attribute='domain_names') | sum(start=[]))
+      | list
+    }}
+  loop_control:
+    label: "{{ item.domain }}"
+
+- name: Update existing proxy hosts whose certificate just became available
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:81/api/nginx/proxy-hosts/{{ (npm_existing_proxy_hosts.json | selectattr('domain_names', 'equalto', [item.domain]) | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ npm_login.json.token }}"
+    body_format: json
+    body:
+      certificate_id: "{{ npm_cert_by_domain[item.domain] }}"
+      ssl_forced: true
+    status_code: 200
+  loop: >-
+    {{
+      npm_proxy_hosts
+      | selectattr('ssl', 'equalto', true)
+      | selectattr('domain', 'in', npm_existing_proxy_hosts.json | map(attribute='domain_names') | sum(start=[]))
+      | selectattr('domain', 'in', npm_cert_by_domain.keys() | list)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.domain }}"
+  when: >-
+    (npm_existing_proxy_hosts.json | selectattr('domain_names', 'equalto', [item.domain]) | first).certificate_id == 0

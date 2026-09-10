@@ -1,0 +1,4 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+npm_admin_email: REPLACE_ME
+npm_admin_password: REPLACE_ME
+komodo_passkey: REPLACE_ME

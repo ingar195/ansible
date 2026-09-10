@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify Discord when the CephFS backup fails
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pbs-backup-notify.sh

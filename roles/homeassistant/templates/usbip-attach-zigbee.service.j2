@@ -1,0 +1,19 @@
+[Unit]
+Description=Attach Zigbee (ConBee II) via USB/IP from {{ remote_ip }}
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/usbip-attach-zigbee.sh
+# Device may not be ready when the homeassistant container first starts on
+# boot; wait for its udev symlink to settle, then restart the container.
+ExecStartPost=/usr/bin/udevadm settle
+ExecStartPost=-/usr/bin/docker restart homeassistant
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

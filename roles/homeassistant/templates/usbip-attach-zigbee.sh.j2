@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+modprobe vhci_hcd
+
+REMOTE_IP="{{ remote_ip }}"
+BUS_ID_ZIGBEE="{{ bus_id_zigbee }}"
+
+if usbip port | grep -q "$BUS_ID_ZIGBEE"; then
+    echo "Device $BUS_ID_ZIGBEE is already attached. Skipping re-attach."
+    exit 0
+fi
+
+echo "Attempting to attach USB/IP device $BUS_ID_ZIGBEE from $REMOTE_IP"
+if usbip attach -r "$REMOTE_IP" -b "$BUS_ID_ZIGBEE"; then
+    echo "USB/IP device $BUS_ID_ZIGBEE attached successfully."
+else
+    echo "USB/IP attach failed for $BUS_ID_ZIGBEE. Attempting to rebind..."
+    # unbind legitimately fails (device not bound) when the device was never
+    # bound in the first place, not just when it's stuck -- don't let that
+    # abort the script before the bind (the actual fix) gets a chance to run.
+    ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 user@"$REMOTE_IP" sudo /usr/sbin/usbip unbind --busid="$BUS_ID_ZIGBEE" || true
+    ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 user@"$REMOTE_IP" sudo /usr/sbin/usbip bind --busid="$BUS_ID_ZIGBEE"
+    usbip attach -r "$REMOTE_IP" -b "$BUS_ID_ZIGBEE"
+fi

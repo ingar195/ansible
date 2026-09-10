@@ -2,3 +2,8 @@
 # Created via: ceph auth get-or-create client.nfs-gw mon 'allow r' mds 'allow rw' osd 'allow rw tag cephfs data=shared-data'
 ceph_nfs_gw_client_name: client.nfs-gw
 ceph_nfs_gw_client_key: REPLACE_ME
+
+# PBS API token: created via PBS web UI, Datastore -> cephfs-data -> Permissions -> API Token
+pbs_backup_token_secret: REPLACE_ME
+# Discord webhook posted to by pbs-backup-notify.service on backup failure
+pbs_backup_discord_webhook: REPLACE_ME

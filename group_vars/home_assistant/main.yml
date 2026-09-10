@@ -1,0 +1,15 @@
+---
+common_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }
+  - { port: '8234', proto: 'tcp', comment: 'Home Assistant' }
+  - { port: '1880', proto: 'tcp', comment: 'Node-RED' }
+  - { port: '3000', proto: 'tcp', comment: 'Grafana' }
+  - { port: '8086', proto: 'tcp', comment: 'InfluxDB' }
+  - { port: '6052', proto: 'tcp', comment: 'ESPHome' }
+  - { port: '1883', proto: 'tcp', comment: 'Mosquitto MQTT' }
+  - { port: '9001', proto: 'tcp', comment: 'Mosquitto websockets' }
+  - { port: '8091', proto: 'tcp', comment: 'zwavejs2mqtt web UI' }
+  - { port: '3501', proto: 'tcp', comment: 'zwavejs2mqtt websocket server' }
+  - { port: '7575', proto: 'tcp', comment: 'Homarr' }
+  - { port: '8765', proto: 'tcp', comment: 'Speedtest-tracker' }
+  - { port: '3001', proto: 'tcp', comment: 'Uptime Kuma' }
