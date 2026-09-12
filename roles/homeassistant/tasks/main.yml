@@ -39,11 +39,19 @@
   when: bus_id_zigbee is defined
   notify: Reload systemd
 
+- name: Deploy Zigbee USB/IP attach timer
+  ansible.builtin.template:
+    src: usbip-attach-zigbee.timer.j2
+    dest: /etc/systemd/system/usbip-attach-zigbee.timer
+    mode: '0644'
+  when: bus_id_zigbee is defined
+  notify: Reload systemd
+
 - meta: flush_handlers
 
-- name: Enable and start Zigbee USB/IP attach service
+- name: Enable and start Zigbee USB/IP attach timer
   ansible.builtin.systemd:
-    name: usbip-attach-zigbee.service
+    name: usbip-attach-zigbee.timer
     enabled: yes
     state: started
     daemon_reload: yes

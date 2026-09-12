@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodically check the Zigbee USB/IP attach is still up
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

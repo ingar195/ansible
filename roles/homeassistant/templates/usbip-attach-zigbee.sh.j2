@@ -4,9 +4,12 @@ modprobe vhci_hcd
 
 REMOTE_IP="{{ remote_ip }}"
 BUS_ID_ZIGBEE="{{ bus_id_zigbee }}"
+DEVICE_PATH="/dev/serial/by-id/usb-dresden_elektronik_ingenieurtechnik_GmbH_ConBee_II_{{ conbee_serial }}-if00"
 
-if usbip port | grep -q "$BUS_ID_ZIGBEE"; then
-    echo "Device $BUS_ID_ZIGBEE is already attached. Skipping re-attach."
+# Local file check, not `usbip port` (a network call) -- this runs on a
+# timer to self-heal dropped connections, and repeatedly querying usbip
+# over the network was itself observed to cause disconnects.
+if [ -e "$DEVICE_PATH" ]; then
     exit 0
 fi
 
@@ -22,3 +25,8 @@ else
     ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 user@"$REMOTE_IP" sudo /usr/sbin/usbip bind --busid="$BUS_ID_ZIGBEE"
     usbip attach -r "$REMOTE_IP" -b "$BUS_ID_ZIGBEE"
 fi
+
+# Only reached when we actually just (re)attached -- restart homeassistant
+# so it picks up the device. Wait for the udev symlink to appear first.
+udevadm settle
+docker restart homeassistant || true
