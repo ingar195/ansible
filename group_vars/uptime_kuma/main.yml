@@ -1,0 +1,76 @@
+---
+kuma_monitors:
+  # Proxmox/Ceph hosts -- not VMs, the physical cluster itself.
+  - name: pve01
+    host: 10.11.0.11
+    group: PVE Servers
+  - name: pve02
+    host: 10.11.0.12
+    group: PVE Servers
+  - name: pve03
+    host: 10.11.0.13
+    group: PVE Servers
+  - name: pbs01
+    host: 10.11.0.31
+    group: PVE Servers
+
+  # Terraform-managed VMs whose own services aren't tracked individually yet
+  # -- a host ping is the best available check.
+  - name: pve-proxy-dmz01
+    host: 10.12.0.11
+    group: VMs
+  - name: pve-mgn01 (Komodo manager)
+    host: 10.11.0.51
+    group: VMs
+  - name: nfs-gw01
+    host: 10.11.0.53
+    group: VMs
+  - name: pve-docker-int01
+    host: 10.13.0.12
+    group: VMs
+
+  # pve-docker-int01 services -- real checks instead of a host ping, since
+  # a ping can't tell you a specific container died (this is exactly the
+  # Home Assistant outage that went unnoticed for 12h on 2026-09-16).
+  - name: Home Assistant
+    url: "http://10.13.0.12:8234"
+    group: HA
+  - name: Node-RED
+    url: "http://10.13.0.12:1880"
+    group: HA
+  - name: Mosquitto MQTT
+    host: 10.13.0.12
+    port: 1883 # MQTT, not HTTP -- plain TCP check
+    group: HA
+  - name: Grafana
+    url: "http://10.13.0.12:3000"
+    group: HA
+  - name: InfluxDB
+    url: "http://10.13.0.12:8086"
+    group: HA
+
+  # pve-proxy-dmz01 services.
+  - name: NPM
+    url: "http://10.12.0.11:81/"
+    group: DMZ
+
+  # mini01 -- physical mini PC, not a VM, hosts the USB/IP server (shares
+  # the Zigbee/Z-Wave dongles over the network) and Z-Wave JS UI.
+  - name: USB/IP Server
+    host: 10.13.0.61
+    port: 3240 # USB/IP protocol, not HTTP -- plain TCP check
+    group: mini01
+  - name: Z-Wave JS UI
+    url: "http://10.13.0.61:8091"
+    group: mini01
+
+  # General dashboard/utility containers -- no natural home in another group.
+  - name: Homarr
+    url: "http://10.13.0.12:7575"
+    group: Dashboard
+  - name: Speedtest-tracker
+    url: "http://10.13.0.12:8765"
+    group: Dashboard
+  - name: Uptime Kuma
+    url: "http://10.13.0.12:3001"
+    group: Dashboard

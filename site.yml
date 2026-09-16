@@ -27,6 +27,12 @@
   roles:
     - mini_pc
 
+- name: Setup Z-Wave JS gateway
+  hosts: zwavejs
+  become: true
+  roles:
+    - zwavejs
+
 - name: Setup MinIO for Terraform state
   hosts: minio_hosts
   become: true
@@ -53,3 +59,9 @@
   become: true
   roles:
     - homeassistant
+
+- name: Sync Uptime Kuma monitors
+  hosts: uptime_kuma
+  become: true
+  roles:
+    - uptime_kuma

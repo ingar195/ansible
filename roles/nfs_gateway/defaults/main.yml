@@ -14,3 +14,11 @@ cephfs_name: shared-data
 #     cephfs_path: /komodo-manager
 #     clients: ["10.11.0.51"]
 nfs_exports: []
+
+# nfs-ganesha has a known failure mode where its worker threads stall while
+# systemd still reports the unit as active - it logs "Health status is
+# unhealthy" on its own heartbeat when this happens. These control the
+# watchdog timer that restarts it when that's been seen repeatedly.
+ganesha_health_check_interval: "5min"
+ganesha_health_window_seconds: 300
+ganesha_health_threshold: 3
