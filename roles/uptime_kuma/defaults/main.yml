@@ -1,4 +1,6 @@
 ---
+kuma_ports:
+  - { port: '3001', proto: 'tcp', comment: 'Uptime Kuma' }
 kuma_base_url: "http://127.0.0.1:3001"
 kuma_venv: /opt/ansible-venvs/uptime-kuma
 kuma_monitors: []

@@ -1,0 +1,3 @@
+---
+homeassistant_ports:
+  - { port: '8234', proto: 'tcp', comment: 'Home Assistant' }

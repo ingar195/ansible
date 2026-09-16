@@ -2,9 +2,10 @@
 - name: Allow Home Assistant port through UFW
   community.general.ufw:
     rule: allow
-    port: '8234'
-    proto: tcp
-    comment: 'Home Assistant'
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ homeassistant_ports }}"
 
 - name: Update apt cache
   apt:

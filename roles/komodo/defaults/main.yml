@@ -1,2 +1,7 @@
 ---
 komodo_timezone: 'Europe/Oslo'
+
+komodo_periphery_ports:
+  - { port: '8120', proto: 'tcp', comment: 'Komodo Periphery' }
+komodo_manager_ports:
+  - { port: '9120', proto: 'tcp', comment: 'Komodo Core (Manager)' }

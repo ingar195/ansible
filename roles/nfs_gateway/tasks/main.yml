@@ -36,8 +36,10 @@
 - name: Allow NFS port
   ufw:
     rule: allow
-    port: '2049'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ nfs_gateway_ports }}"
 
 - name: Ensure NFS-Ganesha is enabled and running
   service:

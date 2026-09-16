@@ -1,0 +1,5 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+# Sudo password for the ansible_user account (roles/common sets it and
+# removes cloud-init's NOPASSWD:ALL grant, every run). Generate with:
+#   openssl rand -base64 24
+fleet_sudo_password: REPLACE_ME

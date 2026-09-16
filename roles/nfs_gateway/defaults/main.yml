@@ -1,4 +1,7 @@
 ---
+nfs_gateway_ports:
+  - { port: '2049', proto: 'tcp', comment: 'NFS' }
+
 ceph_mon_hosts:
   - 10.11.0.11
   - 10.11.0.12
