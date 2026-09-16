@@ -1,0 +1,29 @@
+#!/bin/bash
+# Restarts nfs-ganesha if its own health heartbeat has logged "unhealthy"
+# repeatedly and recently - a known failure mode where its worker threads
+# stall while systemd still reports the unit as active.
+set -euo pipefail
+
+LOG=/var/log/ganesha/ganesha.log
+WINDOW_SECONDS={{ ganesha_health_window_seconds }}
+THRESHOLD={{ ganesha_health_threshold }}
+
+[ -f "$LOG" ] || exit 0
+
+now=$(date +%s)
+count=0
+
+while IFS= read -r line; do
+    datepart=$(cut -d' ' -f1 <<< "$line")
+    timepart=$(cut -d' ' -f2 <<< "$line")
+    IFS='/' read -r dd mm yyyy <<< "$datepart"
+    epoch=$(date -d "${yyyy}-${mm}-${dd} ${timepart}" +%s 2>/dev/null) || continue
+    if (( now - epoch <= WINDOW_SECONDS )); then
+        count=$((count + 1))
+    fi
+done < <(tail -n 500 "$LOG" | grep "Health status is unhealthy")
+
+if (( count >= THRESHOLD )); then
+    logger -t ganesha-healthcheck "nfs-ganesha unhealthy heartbeat seen ${count} times in the last $((WINDOW_SECONDS / 60))m, restarting service"
+    systemctl restart nfs-ganesha
+fi

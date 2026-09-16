@@ -9,8 +9,21 @@ DEVICE_PATH="/dev/serial/by-id/usb-dresden_elektronik_ingenieurtechnik_GmbH_ConB
 # Local file check, not `usbip port` (a network call) -- this runs on a
 # timer to self-heal dropped connections, and repeatedly querying usbip
 # over the network was itself observed to cause disconnects.
-if [ -e "$DEVICE_PATH" ]; then
+# Must be a symlink specifically (what udev creates) -- a plain directory
+# at this path means Docker auto-created it for a bind mount whose source
+# didn't exist yet, not that the device is actually attached.
+# The device being attached doesn't mean HA is running -- the container can
+# die (OOM, manual stop, failed restart) independently of the USB/IP link,
+# and this timer is the only thing checking either, so it must check both.
+if [ -L "$DEVICE_PATH" ]; then
+    if [ "$(docker inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' homeassistant 2>/dev/null)" != "true" ]; then
+        echo "Device attached but homeassistant container is not running -- starting it."
+        docker start homeassistant
+    fi
     exit 0
+fi
+if [ -d "$DEVICE_PATH" ]; then
+    rmdir "$DEVICE_PATH"
 fi
 
 echo "Attempting to attach USB/IP device $BUS_ID_ZIGBEE from $REMOTE_IP"
@@ -27,6 +40,15 @@ else
 fi
 
 # Only reached when we actually just (re)attached -- restart homeassistant
-# so it picks up the device. Wait for the udev symlink to appear first.
+# so it picks up the device. udevadm settle alone isn't enough -- observed
+# the symlink still not resolving right after it returns, which makes
+# `docker restart` fail its start half (device node missing) after it's
+# already killed the old container. Poll for the resolved path directly.
 udevadm settle
+for i in $(seq 1 10); do
+    if readlink -f "$DEVICE_PATH" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+done
 docker restart homeassistant || true

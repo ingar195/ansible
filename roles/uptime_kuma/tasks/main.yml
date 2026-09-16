@@ -1,0 +1,30 @@
+---
+- name: Allow Uptime Kuma port through UFW
+  community.general.ufw:
+    rule: allow
+    port: '3001'
+    proto: tcp
+    comment: 'Uptime Kuma'
+
+- name: Install python3-venv (needed to isolate uptime-kuma-api from PEP 668)
+  ansible.builtin.apt:
+    name: python3-venv
+    state: present
+
+- name: Install uptime-kuma-api into an isolated venv
+  ansible.builtin.pip:
+    name: uptime-kuma-api
+    virtualenv: "{{ kuma_venv }}"
+    virtualenv_command: python3 -m venv
+
+- name: Render monitor sync script
+  ansible.builtin.template:
+    src: sync_monitors.py.j2
+    dest: /tmp/kuma_sync_monitors.py
+    mode: '0600'
+
+- name: Sync monitors (create any that don't already exist by name)
+  ansible.builtin.command:
+    cmd: "{{ kuma_venv }}/bin/python /tmp/kuma_sync_monitors.py"
+  register: kuma_sync
+  changed_when: "'Adding monitor' in kuma_sync.stdout"
