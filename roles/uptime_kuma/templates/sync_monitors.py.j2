@@ -25,7 +25,18 @@ api = UptimeKumaApi("{{ kuma_base_url }}")
 # 2FA is enabled on the admin account, so plain login() (which needs a fresh
 # TOTP code) can't be automated -- use the persistent token from a one-time
 # browser login instead (grabbed from localStorage, stored in vault).
-api.login_by_token("{{ kuma_token }}")
+#
+# The first call on a fresh connection reliably times out: Kuma pushes its
+# entire backlog (heartbeat history + cert/domain info for every monitor) to
+# any newly connected socket before login, and that competes with this call's
+# ack on socketio's single background thread. The backlog only grows as more
+# monitors get added, so this isn't a one-off flake -- retry once, by which
+# point the backlog's already drained (confirmed: fails at the 10s timeout on
+# attempt 1, succeeds in ~3s on attempt 2, every time).
+try:
+    api.login_by_token("{{ kuma_token }}")
+except Exception:
+    api.login_by_token("{{ kuma_token }}")
 try:
     alert_id = next(n["id"] for n in api.get_notifications() if n["name"] == "{{ kuma_alert_notification }}")
 

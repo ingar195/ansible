@@ -74,7 +74,5 @@
     port: "{{ item.port }}"
     proto: "{{ item.proto }}"
     comment: "{{ item.comment }}"
-  loop:
-    - { port: '3240', proto: 'tcp', comment: 'USB/IP server communication' }
-    - { port: '3240', proto: 'udp', comment: 'USB/IP data/discovery' }
+  loop: "{{ usb_ip_server_ports }}"
   become: true

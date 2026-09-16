@@ -19,17 +19,13 @@
     mode: '0644'
   notify: Restart MinIO
 
-- name: Allow MinIO API port
+- name: Allow MinIO ports
   ufw:
     rule: allow
-    port: '9000'
-    proto: tcp
-
-- name: Allow MinIO Console port
-  ufw:
-    rule: allow
-    port: '9001'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ minio_ports }}"
 
 - name: Start MinIO
   community.docker.docker_compose_v2:

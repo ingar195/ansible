@@ -39,15 +39,19 @@
 - name: Allow Komodo Core port (Manager)
   ufw:
     rule: allow
-    port: '9120'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ komodo_manager_ports }}"
   when: komodo_type == 'manager'
 
 - name: Allow Komodo Periphery port
   ufw:
     rule: allow
-    port: '8120'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ komodo_periphery_ports }}"
 
 - name: Start Komodo
   community.docker.docker_compose_v2:

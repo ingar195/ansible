@@ -1,0 +1,4 @@
+---
+# Lets `become` keep working unattended once sudo stops being passwordless
+# (roles/common removes NOPASSWD:ALL on every run -- see that role for why).
+ansible_become_password: "{{ fleet_sudo_password }}"

@@ -2,9 +2,10 @@
 - name: Allow Uptime Kuma port through UFW
   community.general.ufw:
     rule: allow
-    port: '3001'
-    proto: tcp
-    comment: 'Uptime Kuma'
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ kuma_ports }}"
 
 - name: Install python3-venv (needed to isolate uptime-kuma-api from PEP 668)
   ansible.builtin.apt:
