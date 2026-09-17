@@ -16,7 +16,7 @@
   template:
     src: env-minio.j2
     dest: "{{ minio_dir }}/.env"
-    mode: '0644'
+    mode: '0600'
   notify: Restart MinIO
 
 - name: Allow MinIO ports

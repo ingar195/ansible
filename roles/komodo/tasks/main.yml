@@ -33,7 +33,7 @@
   template:
     src: "env-{{ komodo_type }}.j2"
     dest: "{{ komodo_dir }}/.env"
-    mode: '0644'
+    mode: '0600'
   notify: Restart Komodo
 
 - name: Allow Komodo Core port (Manager)
