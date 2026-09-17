@@ -1,0 +1,5 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+# Not consumed by any task -- these are Komodo-UI-only secrets (entered in
+# each Stack's Environment field), recorded here purely as a backup copy.
+influxdb_admin_password: REPLACE_ME
+homarr_secret_encryption_key: REPLACE_ME

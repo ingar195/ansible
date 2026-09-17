@@ -1,4 +1,36 @@
 ---
+# Proxmox/PBS hosts (ansible_user=root, see hosts.ini) are a different
+# security model entirely -- root login directly, no sudo, no cloud-init
+# NOPASSWD grant to fix. These two tasks are only for cloud-init VMs.
+- name: Set a real sudo password for the ansible user
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    password: "{{ fleet_sudo_password | password_hash('sha512') }}"
+  tags: [always]
+  when: ansible_user != 'root'
+
+- name: Require a password for sudo (cloud-init writes NOPASSWD:ALL fresh on
+    every VM clone/recreate -- this re-locks it down on every run so a
+    freshly (re)created VM never sits passwordless-admin for long)
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/90-cloud-init-users
+    content: |
+      # Managed by roles/common -- do not hand-edit, cloud-init and this
+      # role will both fight you. See that role's tasks for why this exists.
+      {{ ansible_user }} ALL=(ALL:ALL) ALL
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  tags: [always]
+  when: ansible_user != 'root'
+
+- name: Ensure a DNS resolver is configured
+  lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver {{ ansible_facts['default_ipv4']['gateway'] }}"
+    create: yes
+    mode: '0644'
+  tags: [always]
+
 - name: Update apt cache
   apt:
     update_cache: yes
@@ -35,7 +67,7 @@
 
 - name: Upgrade all packages
   apt:
-    upgrade: dist
+    upgrade: full
     force_apt_get: yes
   tags: [update]
 

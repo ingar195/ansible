@@ -1,0 +1,12 @@
+---
+# Ports for containers on this Komodo-managed docker host (pve-docker-int01)
+# that have no dedicated Ansible role of their own -- HA and Uptime Kuma open
+# their own ports in their own roles instead of living here.
+docker_container_ports:
+  - { port: '1880', proto: 'tcp', comment: 'Node-RED' }
+  - { port: '3000', proto: 'tcp', comment: 'Grafana' }
+  - { port: '8086', proto: 'tcp', comment: 'InfluxDB' }
+  - { port: '1883', proto: 'tcp', comment: 'Mosquitto MQTT' }
+  - { port: '9001', proto: 'tcp', comment: 'Mosquitto websockets' }
+  - { port: '7575', proto: 'tcp', comment: 'Homarr' }
+  - { port: '8765', proto: 'tcp', comment: 'Speedtest-tracker' }

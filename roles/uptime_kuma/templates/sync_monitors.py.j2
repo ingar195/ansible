@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+# Idempotent: only creates monitors/groups that don't already exist by name.
+import json
+from uptime_kuma_api import UptimeKumaApi, MonitorType
+
+# JSON, not a Python literal -- to_json's `true`/`false` aren't valid Python.
+MONITORS = json.loads(r"""{{ kuma_monitors | to_json }}""")
+
+def add_monitor(**kwargs):
+    # This Kuma server (2.x) requires `conditions` in the insert, but the
+    # installed uptime-kuma-api version predates that field and rejects it
+    # as an unknown kwarg -- build the payload the normal way, then patch
+    # the one field the library doesn't know about before sending it raw.
+    from uptime_kuma_api.api import _convert_monitor_input, _check_arguments_monitor
+    from uptime_kuma_api.event import Event
+    data = api._build_monitor_data(**kwargs)
+    data["conditions"] = []
+    _convert_monitor_input(data)
+    _check_arguments_monitor(data)
+    with api.wait_for_event(Event.MONITOR_LIST):
+        return api._call("add", data)
+
+
+api = UptimeKumaApi("{{ kuma_base_url }}")
+# 2FA is enabled on the admin account, so plain login() (which needs a fresh
+# TOTP code) can't be automated -- use the persistent token from a one-time
+# browser login instead (grabbed from localStorage, stored in vault).
+#
+# The first call on a fresh connection reliably times out: Kuma pushes its
+# entire backlog (heartbeat history + cert/domain info for every monitor) to
+# any newly connected socket before login, and that competes with this call's
+# ack on socketio's single background thread. The backlog only grows as more
+# monitors get added, so this isn't a one-off flake -- retry once, by which
+# point the backlog's already drained (confirmed: fails at the 10s timeout on
+# attempt 1, succeeds in ~3s on attempt 2, every time).
+try:
+    api.login_by_token("{{ kuma_token }}")
+except Exception:
+    api.login_by_token("{{ kuma_token }}")
+try:
+    alert_id = next(n["id"] for n in api.get_notifications() if n["name"] == "{{ kuma_alert_notification }}")
+
+    existing = api.get_monitors()
+    existing_by_name = {m["name"]: m for m in existing}
+    group_ids = {m["name"]: m["id"] for m in existing if m["type"] == "group"}
+
+    for group_name in dict.fromkeys(m["group"] for m in MONITORS if m.get("group")):
+        if group_name in group_ids:
+            continue
+        print(f"Adding group: {group_name}")
+        # Groups are just folders in the sidebar -- they never actually check
+        # anything, so they're excluded from the alert on purpose.
+        result = add_monitor(type=MonitorType.GROUP, name=group_name)
+        group_ids[group_name] = result["monitorID"]
+
+    for mon in MONITORS:
+        if mon["name"] in existing_by_name:
+            continue
+        print(f"Adding monitor: {mon['name']}")
+        parent = group_ids.get(mon["group"]) if mon.get("group") else None
+        # A url means "check this HTTP(S) service" (real response, not just an
+        # open socket); a port with no url means "check this non-HTTP port is
+        # open" (e.g. MQTT); neither means "check the host is alive" (ping).
+        if mon.get("url"):
+            add_monitor(
+                type=MonitorType.HTTP,
+                name=mon["name"],
+                url=mon["url"],
+                ignoreTls=mon.get("insecure", False),
+                parent=parent,
+                interval=60,
+                notificationIDList=[alert_id],
+            )
+        elif mon.get("port"):
+            add_monitor(
+                type=MonitorType.PORT,
+                name=mon["name"],
+                hostname=mon["host"],
+                port=mon["port"],
+                parent=parent,
+                interval=60,
+                notificationIDList=[alert_id],
+            )
+        else:
+            add_monitor(
+                type=MonitorType.PING,
+                name=mon["name"],
+                hostname=mon["host"],
+                parent=parent,
+                interval=60,
+                notificationIDList=[alert_id],
+            )
+
+    # Retrofit: monitors created before this alert was wired in (or added by
+    # hand) won't have it yet. Groups are skipped -- they don't alert at all.
+    for name in {mon["name"] for mon in MONITORS}:
+        m = existing_by_name.get(name)
+        if not m or m["type"] == "group":
+            continue
+        if alert_id in (m.get("notificationIDList") or {}):
+            continue
+        print(f"Enabling alert on existing monitor: {name}")
+        api.edit_monitor(m["id"], notificationIDList=[alert_id])
+finally:
+    api.disconnect()

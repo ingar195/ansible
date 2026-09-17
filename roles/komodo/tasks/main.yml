@@ -3,6 +3,12 @@
   set_fact:
     komodo_dir: "{{ '/opt/docker/komodo' if komodo_type == 'manager' else '/opt/docker/komodo_agent' }}"
 
+- name: Install nfs-common (needed for Docker's NFS volume driver)
+  apt:
+    name: nfs-common
+    state: present
+  when: komodo_nfs_server is defined
+
 - name: Create Komodo directory
   file:
     path: "{{ komodo_dir }}"
@@ -27,21 +33,25 @@
   template:
     src: "env-{{ komodo_type }}.j2"
     dest: "{{ komodo_dir }}/.env"
-    mode: '0644'
+    mode: '0600'
   notify: Restart Komodo
 
 - name: Allow Komodo Core port (Manager)
   ufw:
     rule: allow
-    port: '9120'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ komodo_manager_ports }}"
   when: komodo_type == 'manager'
 
 - name: Allow Komodo Periphery port
   ufw:
     rule: allow
-    port: '8120'
-    proto: tcp
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ komodo_periphery_ports }}"
 
 - name: Start Komodo
   community.docker.docker_compose_v2:

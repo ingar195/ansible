@@ -1,0 +1,73 @@
+---
+- name: Install Ceph client and NFS-Ganesha packages
+  apt:
+    name:
+      - ceph-common
+      - nfs-ganesha
+      - nfs-ganesha-ceph
+    state: present
+    update_cache: yes
+
+- name: Ensure /etc/ceph directory exists
+  file:
+    path: /etc/ceph
+    state: directory
+    mode: '0755'
+
+- name: Deploy ceph.conf
+  template:
+    src: ceph.conf.j2
+    dest: /etc/ceph/ceph.conf
+    mode: '0644'
+
+- name: Deploy Ceph client keyring
+  template:
+    src: ceph.keyring.j2
+    dest: "/etc/ceph/ceph.{{ ceph_nfs_gw_client_name }}.keyring"
+    mode: '0600'
+
+- name: Deploy ganesha.conf
+  template:
+    src: ganesha.conf.j2
+    dest: /etc/ganesha/ganesha.conf
+    mode: '0644'
+  notify: Restart NFS-Ganesha
+
+- name: Allow NFS port
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ nfs_gateway_ports }}"
+
+- name: Ensure NFS-Ganesha is enabled and running
+  service:
+    name: nfs-ganesha
+    state: started
+    enabled: yes
+
+- name: Deploy Ganesha health-check script
+  template:
+    src: ganesha-healthcheck.sh.j2
+    dest: /usr/local/bin/ganesha-healthcheck.sh
+    mode: '0755'
+
+- name: Deploy Ganesha health-check systemd service
+  template:
+    src: ganesha-healthcheck.service.j2
+    dest: /etc/systemd/system/ganesha-healthcheck.service
+    mode: '0644'
+
+- name: Deploy Ganesha health-check systemd timer
+  template:
+    src: ganesha-healthcheck.timer.j2
+    dest: /etc/systemd/system/ganesha-healthcheck.timer
+    mode: '0644'
+
+- name: Enable and start Ganesha health-check timer
+  systemd:
+    name: ganesha-healthcheck.timer
+    daemon_reload: yes
+    enabled: yes
+    state: started

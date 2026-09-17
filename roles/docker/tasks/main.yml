@@ -30,11 +30,14 @@
     content: |
       Types: deb
       URIs: https://download.docker.com/linux/debian
-      Suites: {{ ansible_distribution_release }}
+      Suites: {{ ansible_facts['distribution_release'] }}
       Components: stable
       Signed-By: /etc/apt/keyrings/docker.asc
     mode: '0644'
-  notify: Update Apt
+    
+- name: Update apt cache
+  apt:
+    update_cache: yes
 
 - name: Install Docker packages
   apt:
@@ -54,3 +57,11 @@
     line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
     backup: yes
   notify: Reload UFW
+
+- name: Allow ports for docker-hosted containers with no dedicated role
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ docker_container_ports }}"

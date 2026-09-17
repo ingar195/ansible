@@ -1,0 +1,5 @@
+---
+npm_ports:
+  - { port: '80', proto: 'tcp', comment: 'NPM HTTP' }
+  - { port: '443', proto: 'tcp', comment: 'NPM HTTPS' }
+  - { port: '81', proto: 'tcp', comment: 'NPM Admin UI' }

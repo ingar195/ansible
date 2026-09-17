@@ -1,5 +1,51 @@
 ---
-- name: Update apt cache
+- name: Update and full-upgrade packages
   apt:
-    update_cache: yes
-    cache_valid_time: 3600
+    update_cache: true
+    upgrade: full
+    autoremove: true
+    autoclean: true
+
+- name: Clean cloud-init state (so it re-runs fresh on every clone)
+  ansible.builtin.command: cloud-init clean --logs
+  changed_when: true
+
+- name: Reset machine-id (so every clone gets its own)
+  ansible.builtin.copy:
+    content: ""
+    dest: /etc/machine-id
+    mode: '0444'
+
+- name: Remove dbus machine-id
+  ansible.builtin.file:
+    path: /var/lib/dbus/machine-id
+    state: absent
+
+- name: Re-link dbus machine-id to /etc/machine-id
+  ansible.builtin.file:
+    src: /etc/machine-id
+    dest: /var/lib/dbus/machine-id
+    state: link
+
+- name: Remove SSH host keys (regenerated fresh on first boot of each clone)
+  ansible.builtin.shell: rm -f /etc/ssh/ssh_host_*
+  changed_when: true
+
+- name: Clear shell history
+  ansible.builtin.shell: find /root /home -maxdepth 2 -name .bash_history -delete
+  changed_when: true
+
+- name: Clear wtmp/btmp/lastlog
+  ansible.builtin.shell: truncate -s 0 /var/log/wtmp /var/log/btmp /var/log/lastlog
+  failed_when: false
+  changed_when: true
+
+- name: Vacuum journal logs
+  ansible.builtin.shell: journalctl --rotate && journalctl --vacuum-time=1s
+  changed_when: true
+
+- name: Shut down the VM
+  ansible.builtin.command: shutdown -h now
+  async: 1
+  poll: 0
+  ignore_errors: true

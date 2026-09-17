@@ -1,0 +1,7 @@
+---
+- name: Configure and sysprep the template-source VM
+  hosts: template
+  become: true
+  roles:
+    - common
+    - template

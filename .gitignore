@@ -1,6 +1,6 @@
 vault.yml
 a.*
-hosts
+hosts.ini
 inventory
 group_vars/**/vault.yml
 !group_vars/**/vault.example.yml
