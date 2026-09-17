@@ -1,0 +1,70 @@
+---
+- name: Mount CephFS for backup source (read-only, independent of Ganesha)
+  ansible.posix.mount:
+    path: "{{ pbs_backup_cephfs_mount }}"
+    src: ":/"
+    fstype: ceph
+    opts: "name={{ pbs_backup_ceph_client_name | regex_replace('^client\\.', '') }},ro,_netdev"
+    state: mounted
+
+- name: Add Proxmox release keyring for pbs-client repo
+  ansible.builtin.get_url:
+    url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+    dest: "/usr/share/keyrings/proxmox-release-{{ ansible_distribution_release }}.gpg"
+    mode: '0644'
+
+- name: Add Proxmox pbs-client apt repository
+  ansible.builtin.template:
+    src: pbs-client.list.j2
+    dest: /etc/apt/sources.list.d/pbs-client.list
+    mode: '0644'
+
+- name: Install proxmox-backup-client and curl
+  ansible.builtin.apt:
+    name:
+      - proxmox-backup-client
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Deploy backup credentials environment file
+  ansible.builtin.template:
+    src: pbs-backup.env.j2
+    dest: /etc/pbs-backup.env
+    mode: '0600'
+
+- name: Deploy backup systemd service
+  ansible.builtin.template:
+    src: pbs-backup.service.j2
+    dest: /etc/systemd/system/pbs-backup.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Deploy backup failure-notification script
+  ansible.builtin.template:
+    src: pbs-backup-notify.sh.j2
+    dest: /usr/local/bin/pbs-backup-notify.sh
+    mode: '0700'
+
+- name: Deploy backup failure-notification service
+  ansible.builtin.template:
+    src: pbs-backup-notify.service.j2
+    dest: /etc/systemd/system/pbs-backup-notify.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Deploy backup timer
+  ansible.builtin.template:
+    src: pbs-backup.timer.j2
+    dest: /etc/systemd/system/pbs-backup.timer
+    mode: '0644'
+  notify: Reload systemd
+
+- meta: flush_handlers
+
+- name: Enable and start backup timer
+  ansible.builtin.systemd:
+    name: pbs-backup.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes

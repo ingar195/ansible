@@ -1,0 +1,6 @@
+---
+minio_dir: /opt/docker/minio
+
+minio_ports:
+  - { port: '9000', proto: 'tcp', comment: 'MinIO API' }
+  - { port: '9001', proto: 'tcp', comment: 'MinIO Console' }

@@ -1,0 +1,8 @@
+---
+- name: Reboot all hosts
+  hosts: all_vms
+  become: true
+  serial: 1
+  tasks:
+    - name: Reboot and wait for host to come back
+      ansible.builtin.reboot:

@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart nfs-ganesha if it reports an unhealthy heartbeat
+After=nfs-ganesha.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ganesha-healthcheck.sh

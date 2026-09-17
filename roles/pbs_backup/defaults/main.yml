@@ -1,0 +1,6 @@
+---
+pbs_backup_cephfs_mount: /mnt/cephfs-backup
+pbs_backup_id: cephfs-shared-data
+pbs_backup_archive_name: shared-data
+pbs_backup_schedule: "*-*-* 02:00:00"
+pbs_backup_ceph_client_name: "{{ ceph_nfs_gw_client_name }}"

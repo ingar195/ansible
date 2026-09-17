@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically check nfs-ganesha health
+
+[Timer]
+OnBootSec={{ ganesha_health_check_interval }}
+OnUnitActiveSec={{ ganesha_health_check_interval }}
+Unit=ganesha-healthcheck.service
+
+[Install]
+WantedBy=timers.target

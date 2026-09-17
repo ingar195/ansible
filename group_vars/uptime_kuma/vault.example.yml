@@ -1,0 +1,6 @@
+# Copy this file to vault.yml and encrypt it with ansible-vault.
+# 2FA is enabled on the Kuma admin account, so username/password can't be
+# automated. Log into the Kuma UI once ("Remember Me" checked), then grab the
+# persistent login token from your browser: DevTools -> Application ->
+# Local Storage -> http://<kuma-host>:3001 -> "token" key.
+kuma_token: REPLACE_ME

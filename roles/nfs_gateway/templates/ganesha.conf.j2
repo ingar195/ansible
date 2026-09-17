@@ -1,0 +1,35 @@
+NFS_CORE_PARAM {
+    Enable_NLM = false;
+    Enable_RQUOTA = false;
+    Protocols = 4;
+}
+
+NFSv4 {
+    RecoveryBackend = fs_ng;
+    Minor_Versions = 1, 2;
+}
+
+{% for export in nfs_exports %}
+EXPORT {
+    Export_Id = {{ export.export_id }};
+    Path = "{{ export.cephfs_path }}";
+    Pseudo = "{{ export.pseudo_path }}";
+    Access_Type = RW;
+    Squash = No_Root_Squash;
+    Protocols = 4;
+    Transports = TCP;
+    SecType = sys;
+
+    FSAL {
+        Name = CEPH;
+        User_Id = "{{ ceph_nfs_gw_client_name | regex_replace('^client\\.', '') }}";
+        Filesystem = "{{ cephfs_name }}";
+    }
+
+    CLIENT {
+        Clients = {{ export.clients | join(', ') }};
+        Access_Type = RW;
+    }
+}
+
+{% endfor %}

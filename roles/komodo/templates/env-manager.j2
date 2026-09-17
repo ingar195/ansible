@@ -14,8 +14,10 @@ KOMODO_WEBHOOK_SECRET={{ komodo_webhook_secret }}
 KOMODO_JWT_SECRET={{ komodo_jwt_secret }}
 KOMODO_JWT_TTL=1-day
 
-# Core configuration
-KOMODO_HOST=https://{{ komodo_host }}:8120
+# Core configuration -- 9120 is Core's own UI port (what alert links, e.g.
+# Discord, should point at); 8120 is periphery's port, used below for
+# KOMODO_FIRST_SERVER instead, not here.
+KOMODO_HOST=http://{{ komodo_host }}:9120
 KOMODO_TITLE={{ komodo_title | default('Komodo') }}
 KOMODO_FIRST_SERVER=https://periphery:8120
 KOMODO_FIRST_SERVER_NAME=Local
