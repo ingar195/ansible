@@ -5,6 +5,13 @@
   roles:
     - common
 
+- name: Configure monitoring agents (metrics + logs)
+  hosts: all
+  become: true
+  tags: [monitoring_agent]
+  roles:
+    - monitoring_agent
+
 - name: Configure Wazuh Agents
   hosts: service_wazuh
   become: true
@@ -63,5 +70,12 @@
 - name: Sync Uptime Kuma monitors
   hosts: uptime_kuma
   become: true
+  tags: [uptime_kuma]
   roles:
     - uptime_kuma
+
+- name: Setup monitoring server data disk
+  hosts: monitoring_server
+  become: true
+  roles:
+    - monitoring_server

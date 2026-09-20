@@ -1,0 +1,36 @@
+---
+- name: Install parted
+  ansible.builtin.apt:
+    name: parted
+    state: present
+
+- name: Partition the data disk (/dev/sdb)
+  community.general.parted:
+    device: /dev/sdb
+    number: 1
+    state: present
+    fs_type: ext4
+
+- name: Format the data partition
+  community.general.filesystem:
+    fstype: ext4
+    dev: /dev/sdb1
+
+- name: Mount the data disk at /data
+  ansible.posix.mount:
+    path: /data
+    src: /dev/sdb1
+    fstype: ext4
+    state: mounted
+
+- name: Create data directories for the monitoring compose stack
+  ansible.builtin.file:
+    path: "/data/{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}" # each image's default non-root uid, so the container can write without running as root
+    mode: '0755'
+  loop:
+    - { path: prometheus, owner: "65534" } # nobody, prom/prometheus default
+    - { path: loki, owner: "10001" } # grafana/loki default
+    - { path: grafana, owner: "472" } # grafana/grafana default
+
