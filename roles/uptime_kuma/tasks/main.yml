@@ -28,4 +28,4 @@
   ansible.builtin.command:
     cmd: "{{ kuma_venv }}/bin/python /tmp/kuma_sync_monitors.py"
   register: kuma_sync
-  changed_when: "'Adding monitor' in kuma_sync.stdout"
+  changed_when: kuma_sync.stdout | length > 0 # the script only prints when it adds/updates something

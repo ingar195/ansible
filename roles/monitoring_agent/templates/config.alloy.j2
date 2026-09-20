@@ -1,0 +1,95 @@
+// Managed by roles/monitoring_agent -- do not hand-edit.
+
+prometheus.exporter.unix "default" { }
+
+// docker_only: true -- reports containers, not the whole host filesystem/cgroup
+// tree; on hosts with no Docker this just reports nothing, harmlessly.
+prometheus.exporter.cadvisor "default" {
+  docker_only = true
+}
+
+prometheus.scrape "default" {
+  targets         = concat(prometheus.exporter.unix.default.targets, prometheus.exporter.cadvisor.default.targets)
+  forward_to      = [prometheus.remote_write.monitoring.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.remote_write "monitoring" {
+  endpoint {
+    url = "http://{{ monitoring_server_ip }}:9090/api/v1/write"
+  }
+}
+
+loki.write "monitoring" {
+  endpoint {
+    url = "http://{{ monitoring_server_ip }}:3100/loki/api/v1/push"
+  }
+}
+
+loki.source.journal "journal" {
+  forward_to = [loki.write.monitoring.receiver]
+  labels = {
+    job  = "journal",
+    host = "{{ ansible_hostname }}",
+  }
+}
+
+// Docker API discovery instead of globbing log files directly -- gives real
+// container/image labels for free, harmless no-op on hosts with no Docker.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_containers" {
+  targets = discovery.docker.containers.targets
+
+  // Alloy's discovery.docker has no clean image-name meta-label (only a
+  // compose label containing the image's sha256 hash) -- container name is
+  // the practical stand-in, since each container maps to one specific image.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "docker" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_containers.output
+  forward_to = [loki.write.monitoring.receiver]
+  labels = {
+    job  = "docker",
+    host = "{{ ansible_hostname }}",
+  }
+}
+
+// Custom app logs: drop them in {{ monitoring_agent_custom_log_root }}/<app>/*.log
+// and the subfolder name becomes the `app` label automatically.
+local.file_match "custom_logs" {
+  path_targets = [{"__path__" = "{{ monitoring_agent_custom_log_root }}/*/*.log"}]
+}
+
+discovery.relabel "custom_logs" {
+  targets = local.file_match.custom_logs.targets
+
+  rule {
+    source_labels = ["__path__"]
+    regex         = "{{ monitoring_agent_custom_log_root }}/([^/]+)/.*"
+    target_label  = "app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "custom"
+  }
+
+  rule {
+    target_label = "host"
+    replacement  = "{{ ansible_hostname }}"
+  }
+}
+
+loki.source.file "custom" {
+  targets    = discovery.relabel.custom_logs.output
+  forward_to = [loki.write.monitoring.receiver]
+}
