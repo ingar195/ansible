@@ -4,9 +4,12 @@
     name: parted
     state: present
 
-- name: Partition the data disk (/dev/sdb)
+# Terraform's second VM disk, scsi1 -- addressed by-id, NOT /dev/sdb: SCSI
+# enumeration order isn't stable across reboots, so /dev/sdX can flip to the
+# boot disk instead.
+- name: Partition the data disk
   community.general.parted:
-    device: /dev/sdb
+    device: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
     number: 1
     state: present
     fs_type: ext4
@@ -14,12 +17,12 @@
 - name: Format the data partition
   community.general.filesystem:
     fstype: ext4
-    dev: /dev/sdb1
+    dev: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1-part1
 
 - name: Mount the data disk at /data
   ansible.posix.mount:
     path: /data
-    src: /dev/sdb1
+    src: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1-part1
     fstype: ext4
     state: mounted
 

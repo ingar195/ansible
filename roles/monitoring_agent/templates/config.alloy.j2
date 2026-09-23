@@ -1,6 +1,10 @@
 // Managed by roles/monitoring_agent -- do not hand-edit.
 
-prometheus.exporter.unix "default" { }
+// thermal_zone logs `no data available` every scrape on hosts that expose no
+// thermal zones (pve03); temperatures still come from the hwmon collector.
+prometheus.exporter.unix "default" {
+  disable_collectors = ["thermal_zone"]
+}
 
 // docker_only: true -- reports containers, not the whole host filesystem/cgroup
 // tree; on hosts with no Docker this just reports nothing, harmlessly.
@@ -14,6 +18,18 @@ prometheus.scrape "default" {
   scrape_interval = "15s"
 }
 
+{% if 'ceph_nodes' in group_names %}
+// Ceph mgr Prometheus module (enable with `ceph mgr module enable prometheus`).
+// Only the active mgr serves metrics; on the other nodes this target just
+// shows up=0, which is harmless.
+prometheus.scrape "ceph" {
+  targets         = [{"__address__" = "localhost:9283", "instance" = "{{ ansible_hostname }}"}]
+  job_name        = "ceph"
+  forward_to      = [prometheus.remote_write.monitoring.receiver]
+  scrape_interval = "30s"
+}
+
+{% endif %}
 prometheus.remote_write "monitoring" {
   endpoint {
     url = "http://{{ monitoring_server_ip }}:9090/api/v1/write"
@@ -34,8 +50,10 @@ loki.source.journal "journal" {
   }
 }
 
+{% if monitoring_agent_docker_bin.stat.exists %}
 // Docker API discovery instead of globbing log files directly -- gives real
-// container/image labels for free, harmless no-op on hosts with no Docker.
+// container labels for free. Only rendered where Docker is installed: with no
+// Docker, discovery.docker logs "Unable to refresh target groups" every minute.
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
@@ -62,6 +80,7 @@ loki.source.docker "docker" {
     host = "{{ ansible_hostname }}",
   }
 }
+{% endif %}
 
 // Custom app logs: drop them in {{ monitoring_agent_custom_log_root }}/<app>/*.log
 // and the subfolder name becomes the `app` label automatically.
