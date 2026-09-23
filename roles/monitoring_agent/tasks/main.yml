@@ -56,6 +56,11 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+- name: Check whether Docker is installed (decides if the docker log source is rendered)
+  ansible.builtin.stat:
+    path: /usr/bin/docker
+  register: monitoring_agent_docker_bin
+
 - name: Deploy Alloy config
   template:
     src: config.alloy.j2

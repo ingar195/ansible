@@ -5,7 +5,7 @@
 - name: Set a real sudo password for the ansible user
   ansible.builtin.user:
     name: "{{ ansible_user }}"
-    password: "{{ fleet_sudo_password | password_hash('sha512') }}"
+    password: "{{ fleet_sudo_password | password_hash('sha512', ansible_hostname | regex_replace('[^A-Za-z0-9./]', '')) }}"
   tags: [always]
   when: ansible_user != 'root'
 

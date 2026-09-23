@@ -99,3 +99,21 @@
     name: sysmon
     enabled: true
     state: started
+
+- name: Cap rsyslog/user.log rotation size (Sysmon is very high-volume)
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/rsyslog-size-cap
+    mode: '0644'
+    content: |
+      /var/log/syslog
+      /var/log/user.log
+      {
+          size 100M
+          rotate 2
+          compress
+          missingok
+          notifempty
+          postrotate
+              systemctl kill -s HUP rsyslog.service >/dev/null 2>&1 || true
+          endscript
+      }
