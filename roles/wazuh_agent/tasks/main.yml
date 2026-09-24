@@ -100,20 +100,108 @@
     enabled: true
     state: started
 
-- name: Cap rsyslog/user.log rotation size (Sysmon is very high-volume)
+# Sysmon is very high-volume (~10 GB/day on a busy Proxmox node). logrotate
+# rejects a log listed in two files ("duplicate log entry") and keeps the first,
+# so take syslog/user.log out of the stock rsyslog config and own them here.
+- name: Remove the superseded rsyslog-size-cap logrotate file
+  ansible.builtin.file:
+    path: /etc/logrotate.d/rsyslog-size-cap
+    state: absent
+
+- name: Remove syslog/user.log from the stock rsyslog logrotate config
+  ansible.builtin.replace:
+    path: /etc/logrotate.d/rsyslog
+    regexp: '^/var/log/(syslog|user\.log)\n'
+    replace: ''
+
+- name: Rotate syslog/user.log by size
   ansible.builtin.copy:
-    dest: /etc/logrotate.d/rsyslog-size-cap
+    dest: /etc/logrotate.d/rsyslog-sysmon
     mode: '0644'
     content: |
       /var/log/syslog
       /var/log/user.log
       {
-          size 100M
-          rotate 2
+          size 500M
+          rotate 5
           compress
+          delaycompress
           missingok
           notifempty
+          sharedscripts
           postrotate
               systemctl kill -s HUP rsyslog.service >/dev/null 2>&1 || true
           endscript
       }
+
+# One-off cleanup of the pre-fix backlog (a node had 41 GB of syslog/user.log).
+# The thresholds sit above what healthy rotation produces, so this no-ops once
+# the logs are healthy: with `size 500M` a plain (delaycompress) .1 can reach
+# ~1 GB and a compressed one ~50 MB.
+- name: Find oversized uncompressed rotated syslog/user.log
+  ansible.builtin.find:
+    paths: /var/log
+    patterns: '^(syslog|user\.log)\.[0-9]+$'
+    use_regex: true
+    size: 1200m
+  register: huge_rotated_plain
+
+- name: Find oversized compressed rotated syslog/user.log
+  ansible.builtin.find:
+    paths: /var/log
+    patterns: '^(syslog|user\.log)\.[0-9]+\.gz$'
+    use_regex: true
+    size: 200m
+  register: huge_rotated_gz
+
+- name: Delete oversized rotated syslog/user.log
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ huge_rotated_plain.files + huge_rotated_gz.files }}"
+  loop_control:
+    label: "{{ item.path }} ({{ (item.size / 1048576) | int }} MB)"
+
+# Truncate in place (rsyslog appends, so its open handle stays valid) rather
+# than force-rotate, which would gzip a huge file only to be deleted.
+- name: Find oversized live syslog/user.log
+  ansible.builtin.find:
+    paths: /var/log
+    patterns: '^(syslog|user\.log)$'
+    use_regex: true
+    size: 1g
+  register: huge_live_logs
+
+- name: Truncate oversized live syslog/user.log
+  ansible.builtin.command: truncate -s 0 {{ item.path }}
+  loop: "{{ huge_live_logs.files }}"
+  loop_control:
+    label: "{{ item.path }} ({{ (item.size / 1048576) | int }} MB)"
+  changed_when: true
+
+# logrotate only runs daily by default, so a size limit alone lets the log grow
+# for a whole day; run it hourly.
+- name: Create logrotate.timer drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/logrotate.timer.d
+    state: directory
+    mode: '0755'
+
+- name: Run logrotate hourly
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/logrotate.timer.d/hourly.conf
+    mode: '0644'
+    content: |
+      [Timer]
+      OnCalendar=
+      OnCalendar=hourly
+  register: logrotate_hourly
+
+- name: Reload systemd and restart logrotate timer
+  ansible.builtin.systemd:
+    name: logrotate.timer
+    daemon_reload: true
+    state: restarted
+    enabled: true
+  when: logrotate_hourly.changed
+

@@ -13,7 +13,7 @@
     - monitoring_agent
 
 - name: Configure Wazuh Agents
-  hosts: service_wazuh
+  hosts: all
   become: true
   roles:
     - wazuh_agent
