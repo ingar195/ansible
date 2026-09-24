@@ -42,11 +42,13 @@
     state: present
     update_cache: yes
 
-- name: Configure Journald (Limit to 100MB)
+# log2ram mounts /var/log as a 128M RAM disk, so the cap must leave room for
+# everything else living there (installer logs, apt, etc.) -- 100M overflowed it.
+- name: Configure Journald (Limit to 50MB, must fit inside log2ram's 128M)
   lineinfile:
     path: /etc/systemd/journald.conf
     regexp: '^#?SystemMaxUse='
-    line: 'SystemMaxUse=100M'
+    line: 'SystemMaxUse=50M'
   notify: restart journald
 
 # 3. Memory Optimization (Swap to zRam)

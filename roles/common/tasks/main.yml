@@ -151,3 +151,19 @@
 - name: Enable UFW Firewall
   community.general.ufw:
     state: enabled
+
+# A kernel oops can leave a host hung indefinitely (pve-wazuh sat dead for ~21h
+# after a virtio oops); panic on it and reboot after 10s so it recovers itself.
+- name: Reboot automatically after a kernel oops
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-panic.conf
+    mode: '0644'
+    content: |
+      kernel.panic_on_oops = 1
+      kernel.panic = 10
+  register: panic_sysctl
+
+- name: Apply panic sysctl settings
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/90-panic.conf
+  when: panic_sysctl.changed
+  changed_when: true
