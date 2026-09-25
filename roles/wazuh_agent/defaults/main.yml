@@ -1,0 +1,6 @@
+---
+# syslog/user.log rotate when they reach this size (logrotate runs hourly).
+# Hosts whose /var/log is small (log2ram tmpfs, 128M on mini_pc) must override
+# this in group_vars, or the logs fill the disk before the size is ever reached.
+syslog_rotate_size_mb: 500
+syslog_rotate_count: 5

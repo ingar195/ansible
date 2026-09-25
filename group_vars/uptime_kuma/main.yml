@@ -28,6 +28,9 @@ kuma_monitors:
   - name: pve-docker-int01
     host: 10.13.0.12
     group: VMs
+  - name: pve-wazuh
+    host: 10.13.0.127
+    group: VMs
 
   # pve-docker-int01 services -- real checks instead of a host ping, since
   # a ping can't tell you a specific container died (this is exactly the
@@ -54,6 +57,10 @@ kuma_monitors:
     url: "http://10.12.0.11:81/"
     group: DMZ
 
+  - name: Wazuh
+    url: "https://10.13.0.127"
+    group: SOC
+    insecure: true
   # mini01 -- physical mini PC, not a VM, hosts the USB/IP server (shares
   # the Zigbee/Z-Wave dongles over the network) and Z-Wave JS UI.
   - name: USB/IP Server

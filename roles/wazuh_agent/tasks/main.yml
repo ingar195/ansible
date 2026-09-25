@@ -122,8 +122,8 @@
       /var/log/syslog
       /var/log/user.log
       {
-          size 500M
-          rotate 5
+          size {{ syslog_rotate_size_mb }}M
+          rotate {{ syslog_rotate_count }}
           compress
           delaycompress
           missingok
@@ -135,15 +135,16 @@
       }
 
 # One-off cleanup of the pre-fix backlog (a node had 41 GB of syslog/user.log).
-# The thresholds sit above what healthy rotation produces, so this no-ops once
-# the logs are healthy: with `size 500M` a plain (delaycompress) .1 can reach
-# ~1 GB and a compressed one ~50 MB.
+# The thresholds scale with the rotate size and sit above what healthy rotation
+# produces, so this no-ops once the logs are healthy: a plain (delaycompress)
+# .1 can reach ~2x the size, a compressed one ~0.4x. At the 500M default that
+# is 1200m / 200m.
 - name: Find oversized uncompressed rotated syslog/user.log
   ansible.builtin.find:
     paths: /var/log
     patterns: '^(syslog|user\.log)\.[0-9]+$'
     use_regex: true
-    size: 1200m
+    size: "{{ (syslog_rotate_size_mb * 2.4) | int }}m"
   register: huge_rotated_plain
 
 - name: Find oversized compressed rotated syslog/user.log
@@ -151,7 +152,7 @@
     paths: /var/log
     patterns: '^(syslog|user\.log)\.[0-9]+\.gz$'
     use_regex: true
-    size: 200m
+    size: "{{ (syslog_rotate_size_mb * 0.4) | int }}m"
   register: huge_rotated_gz
 
 - name: Delete oversized rotated syslog/user.log
@@ -169,7 +170,7 @@
     paths: /var/log
     patterns: '^(syslog|user\.log)$'
     use_regex: true
-    size: 1g
+    size: "{{ syslog_rotate_size_mb * 2 }}m"
   register: huge_live_logs
 
 - name: Truncate oversized live syslog/user.log

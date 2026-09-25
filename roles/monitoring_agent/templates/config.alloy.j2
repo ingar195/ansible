@@ -42,10 +42,12 @@ loki.write "monitoring" {
   }
 }
 
+// Alloy always labels these streams job="loki.source.journal.journal" (the
+// component ID); setting job here has no effect, so it is left out. The
+// dashboards (vm-pc-logs) and queries filter on that exact value.
 loki.source.journal "journal" {
   forward_to = [loki.write.monitoring.receiver]
   labels = {
-    job  = "journal",
     host = "{{ ansible_hostname }}",
   }
 }

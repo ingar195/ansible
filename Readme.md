@@ -10,6 +10,49 @@ VM provisioning lives in a separate repo: [github.com/ingar195/terraform](https:
 - Ansible >= 2.15
 - Collections: community.general, community.docker, ansible.posix
 
+## Commands
+```bash
+# Run normally
+ansible-playbook -i your_inventory_file playbook_name # add -Kk to use password auth
+
+# Prompt for the vault password (needed whenever a vault.yml is encrypted)
+ansible-playbook -i your_inventory_file site.yml --ask-vault-pass
+
+# Run only one group
+ansible-playbook -i your_inventory_file playbook_name --limit group_name
+
+# Run only one host (by IP -- the "# hostname" comments in hosts.ini never match)
+ansible-playbook -i your_inventory_file site.yml --limit 10.13.0.12
+
+# Several targets, or a group minus a host
+ansible-playbook -i your_inventory_file site.yml --limit 'group_name,10.13.0.12'
+ansible-playbook -i your_inventory_file site.yml --limit 'all:!template'
+
+# This runs ONLY tasks tagged with 'update'
+ansible-playbook -i your_inventory_file site.yml --tags "update"
+
+# Faster run: skip the slow apt upgrade/autoremove tasks tagged 'update'
+ansible-playbook -i your_inventory_file site.yml --skip-tags "update"
+
+# Cleanup ansible generated snapshots
+ansible-playbook -i your_inventory_file site.yml --tags "manual_cleanup"
+
+# Vault: encrypt / decrypt every group_vars/*/vault.yml
+./crypt.sh
+./crypt.sh d
+
+# Vault: edit or view a single file in place (stays encrypted on disk)
+ansible-vault edit group_vars/all/vault.yml
+ansible-vault view group_vars/all/vault.yml
+```
+
+## Common Tags
+- `update`: package refresh/upgrade tasks
+- `manual_cleanup`: removes old Proxmox ansible snapshots
+- `setup`: first-time provisioning tasks in roles that expose setup tags
+- `monitoring_agent`: only the Alloy agent play (all hosts)
+- `uptime_kuma`: only the Uptime Kuma monitor sync
+
 ## Inventory Notes
 - Keep group names aligned with playbook targets (for example: `komodo_manager_servers`, `service_wazuh`, `zwavejs`).
 - Prefer host key checking defaults (`accept-new`) instead of disabling verification entirely.
@@ -63,28 +106,6 @@ By default, these playbooks will **enable UFW and Fail2Ban**.
 * **Custom Rules:** You must add your own firewall rules on top of the defaults provided here.
 
 
-## Commands
-```bash
-# Run normally
-ansible-playbook -i your_inventory_file playbook_name # add -Kk to use password auth
-
-# Run only one group
-ansible-playbook -i your_inventory_file playbook_name --limit group_name
-
-# This runs ONLY tasks tagged with 'update'
-ansible-playbook -i your_inventory_file site.yml --tags "update"
-
-# Cleanup ansible generated snapshots
-ansible-playbook -i your_inventory_file site.yml --tags "manual_cleanup"
-```
-
-## Common Tags
-- `update`: package refresh/upgrade tasks
-- `manual_cleanup`: removes old Proxmox ansible snapshots
-- `setup`: first-time provisioning tasks in roles that expose setup tags
-- `monitoring_agent`: only the Alloy agent play (all hosts)
-- `uptime_kuma`: only the Uptime Kuma monitor sync
-
 ## Secrets
 - See [ACCOUNTS_SETUP.md](ACCOUNTS_SETUP.md) for the full checklist of accounts/tokens/secrets needed before Terraform or Ansible will run.
 - Keep secrets in Vault files under `group_vars/<group>/vault.yml` and do not commit decrypted secret files.
@@ -99,7 +120,7 @@ ansible-playbook -i your_inventory_file site.yml --tags "manual_cleanup"
 - The Terraform `proxmox_vm` module supports pinning `mac_address` — use it whenever recreating a VM on a network segment that might have a MAC-keyed switch/firewall/DHCP rule (a fresh clone gets a new MAC every time). Grab the old VM's MAC from its Proxmox config *before* destroying it.
 
 
-## Commands 
+## Handy one-off commands
 
 - Tmp mount nfs
 ```bash

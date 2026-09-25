@@ -1,0 +1,7 @@
+---
+# log2ram mounts /var/log as a 128M RAM disk (roles/mini_pc). Budget: journald
+# 50M + syslog and user.log (live + .1 each, ~2x this size per file) + a few MB
+# of other logs, so rotate small. At the 500M default nothing would ever rotate
+# and /var/log fills to 100%.
+syslog_rotate_size_mb: 8
+syslog_rotate_count: 2

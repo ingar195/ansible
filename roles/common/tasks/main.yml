@@ -58,6 +58,16 @@
     value: "true"
     vtype: boolean
 
+- name: Turn on the daily unattended-upgrades run
+  # The debconf answer alone doesn't create this file, so the apt-daily-upgrade
+  # timer fired every day but did nothing.
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: '0644'
+
 - name: Setup unattended-upgrades config
   template:
     src: 50unattended-upgrades.j2
@@ -154,6 +164,7 @@
 
 # A kernel oops can leave a host hung indefinitely (pve-wazuh sat dead for ~21h
 # after a virtio oops); panic on it and reboot after 10s so it recovers itself.
+# VMs only: an oops on a Proxmox node shouldn't silently reboot a Ceph node.
 - name: Reboot automatically after a kernel oops
   ansible.builtin.copy:
     dest: /etc/sysctl.d/90-panic.conf
@@ -162,8 +173,47 @@
       kernel.panic_on_oops = 1
       kernel.panic = 10
   register: panic_sysctl
+  when: "'proxmox_hosts' not in group_names"
 
 - name: Apply panic sysctl settings
   ansible.builtin.command: sysctl -p /etc/sysctl.d/90-panic.conf
-  when: panic_sysctl.changed
+  when: "'proxmox_hosts' not in group_names and panic_sysctl.changed"
   changed_when: true
+
+# Undo the above if an earlier run put it on a Proxmox node (the sysctl values
+# stay loaded until the next reboot, so reset them now too).
+- name: Remove the oops-reboot setting from Proxmox nodes
+  ansible.builtin.file:
+    path: /etc/sysctl.d/90-panic.conf
+    state: absent
+  register: panic_sysctl_removed
+  when: "'proxmox_hosts' in group_names"
+
+- name: Reset panic sysctl values on Proxmox nodes
+  ansible.builtin.command: sysctl -w kernel.panic_on_oops=0 kernel.panic=0
+  when: "'proxmox_hosts' in group_names and panic_sysctl_removed.changed"
+  changed_when: true
+
+# Journals have no size cap by default. mini_pc sets its own, much smaller, cap
+# (log2ram is only 128M), so leave those hosts to that role.
+- name: Cap journald disk usage
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?SystemMaxUse='
+    line: 'SystemMaxUse=1G'
+  when: "'mini_pc' not in group_names"
+  notify: Restart journald
+
+# The VMs have no vsock device, so systemd-ssh-generator logs "Failed to query
+# local AF_VSOCK CID" on the console at every daemon-reload. Harmless; mask it.
+- name: Ensure systemd system-generators override dir exists
+  ansible.builtin.file:
+    path: /etc/systemd/system-generators
+    state: directory
+    mode: '0755'
+
+- name: Mask systemd-ssh-generator (silences AF_VSOCK console noise)
+  ansible.builtin.file:
+    src: /dev/null
+    dest: /etc/systemd/system-generators/systemd-ssh-generator
+    state: link
