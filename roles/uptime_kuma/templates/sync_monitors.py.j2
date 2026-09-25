@@ -110,5 +110,14 @@ try:
             continue
         print(f"Updating URL on existing monitor: {mon['name']} -> {mon['url']}")
         api.edit_monitor(m["id"], url=mon["url"])
+
+    # Same for "Ignore TLS/SSL errors": keep it in line with `insecure`.
+    for mon in MONITORS:
+        m = existing_by_name.get(mon["name"])
+        want = mon.get("insecure", False)
+        if not m or not mon.get("url") or bool(m.get("ignoreTls")) == want:
+            continue
+        print(f"Setting ignoreTls={want} on existing monitor: {mon['name']}")
+        api.edit_monitor(m["id"], ignoreTls=want)
 finally:
     api.disconnect()
