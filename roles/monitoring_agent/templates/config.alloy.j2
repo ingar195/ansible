@@ -46,9 +46,19 @@ loki.write "monitoring" {
 // component ID); setting job here has no effect, so it is left out. The
 // dashboards (vm-pc-logs) and queries filter on that exact value.
 loki.source.journal "journal" {
-  forward_to = [loki.write.monitoring.receiver]
+  forward_to = [loki.process.journal.receiver]
   labels = {
     host = "{{ ansible_hostname }}",
+  }
+}
+
+// Sysmon-for-Linux floods the journal and the dashboards already exclude it, so
+// drop it here instead of storing and then scanning it in Loki.
+loki.process "journal" {
+  forward_to = [loki.write.monitoring.receiver]
+
+  stage.drop {
+    expression = "Linux-Sysmon"
   }
 }
 

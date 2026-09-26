@@ -52,6 +52,13 @@
     mode: '0644'
   notify: Restart Alloy
 
+- name: Disable Alloy usage reporting
+  ansible.builtin.lineinfile:
+    path: /etc/default/alloy
+    regexp: '^CUSTOM_ARGS='
+    line: 'CUSTOM_ARGS="--disable-reporting"'
+  notify: Restart Alloy
+
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true

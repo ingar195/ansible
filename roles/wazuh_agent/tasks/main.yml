@@ -59,46 +59,58 @@
     state: started
     enabled: yes
 
-- name: Download Microsoft GPG key
-  ansible.builtin.get_url:
-    url: https://packages.microsoft.com/keys/microsoft.asc
-    dest: /usr/share/keyrings/microsoft.gpg
-    mode: '0644'
+- name: Sysmon for Linux
+  when: wazuh_sysmon_enabled
+  block:
+    - name: Download Microsoft GPG key
+      ansible.builtin.get_url:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        dest: /usr/share/keyrings/microsoft.gpg
+        mode: '0644'
 
-- name: Add Microsoft Repository (Debian 12)
-  ansible.builtin.deb822_repository:
-    name: microsoft-prod
-    types: deb
-    uris: https://packages.microsoft.com/debian/12/prod
-    suites: bookworm
-    components: main
-    architectures: amd64
-    signed_by: /usr/share/keyrings/microsoft.gpg
-    state: present
+    - name: Add Microsoft Repository (Debian 12)
+      ansible.builtin.deb822_repository:
+        name: microsoft-prod
+        types: deb
+        uris: https://packages.microsoft.com/debian/12/prod
+        suites: bookworm
+        components: main
+        architectures: amd64
+        signed_by: /usr/share/keyrings/microsoft.gpg
+        state: present
 
-- name: Install Sysmon for Linux
-  apt:
-    name: 
-      - sysmonforlinux
-    state: present
-    update_cache: yes
+    - name: Install Sysmon for Linux
+      apt:
+        name:
+          - sysmonforlinux
+        state: present
+        update_cache: yes
 
-- name: Check Sysmon service status
+    - name: Check Sysmon service status
+      ansible.builtin.systemd:
+        name: sysmon
+      register: sysmon_service_check
+
+    - name: Initialize Sysmon if not installed/active
+      ansible.builtin.command:
+        cmd: sysmon -i -accepteula
+      when: sysmon_service_check.status.ActiveState != 'active'
+      changed_when: true
+
+    - name: Ensure Sysmon is enabled
+      ansible.builtin.systemd:
+        name: sysmon
+        enabled: true
+        state: started
+
+# Stop it where it is switched off; the unit may not exist, which is fine.
+- name: Stop and disable Sysmon
   ansible.builtin.systemd:
     name: sysmon
-  register: sysmon_service_check
-
-- name: Initialize Sysmon if not installed/active
-  ansible.builtin.command:
-    cmd: sysmon -i -accepteula
-  when: sysmon_service_check.status.ActiveState != 'active'
-  changed_when: true
-
-- name: Ensure Sysmon is enabled
-  ansible.builtin.systemd:
-    name: sysmon
-    enabled: true
-    state: started
+    enabled: false
+    state: stopped
+  when: not wazuh_sysmon_enabled
+  failed_when: false
 
 # Sysmon is very high-volume (~10 GB/day on a busy Proxmox node). logrotate
 # rejects a log listed in two files ("duplicate log entry") and keeps the first,

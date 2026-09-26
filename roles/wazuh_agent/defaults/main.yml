@@ -1,4 +1,8 @@
 ---
+# Sysmon for Linux writes every process/network event to syslog (~10 GB/day on a
+# busy node). Turn it off in group_vars for hosts that can't absorb that.
+wazuh_sysmon_enabled: true
+
 # syslog/user.log rotate when they reach this size (logrotate runs hourly).
 # Hosts whose /var/log is small (log2ram tmpfs, 128M on mini_pc) must override
 # this in group_vars, or the logs fill the disk before the size is ever reached.
