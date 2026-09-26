@@ -5,3 +5,8 @@
 # and /var/log fills to 100%.
 syslog_rotate_size_mb: 8
 syslog_rotate_count: 2
+
+# Sysmon alone overran the 128M RAM disk between hourly rotations (rsyslog then
+# logged "No space left on device" in a loop, ~30k errors/10min), and this host
+# only runs Z-Wave/USB-IP. The Wazuh agent itself still runs.
+wazuh_sysmon_enabled: false
