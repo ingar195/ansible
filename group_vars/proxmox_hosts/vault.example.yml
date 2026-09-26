@@ -1,0 +1,4 @@
+# Copy this file to vault.yml (gitignored, never commit real values).
+# Root SSH login password for the Proxmox hosts (pve01-03, pbs01). Needs
+# `sshpass` installed on the control node for ansible_ssh_pass to work.
+vault_proxmox_ssh_pass: REPLACE_ME
