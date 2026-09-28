@@ -1,0 +1,7 @@
+[Unit]
+Description=Retry Docker containers whose start failed (e.g. NFS volume unreachable)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/docker-start-failed.sh

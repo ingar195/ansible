@@ -7,4 +7,6 @@ OnFailure=pbs-backup-notify.service
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/pbs-backup.env
+# Fail (and notify) instead of backing up the empty mountpoint directory.
+ExecStartPre=/usr/bin/mountpoint -q {{ pbs_backup_cephfs_mount }}
 ExecStart=/usr/bin/proxmox-backup-client backup {{ pbs_backup_archive_name }}.pxar:{{ pbs_backup_cephfs_mount }} --backup-id {{ pbs_backup_id }}
