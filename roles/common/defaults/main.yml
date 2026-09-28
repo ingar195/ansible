@@ -2,3 +2,8 @@
 # Base allowed ports for EVERYONE
 common_ports:
   - { port: '22', proto: 'tcp', comment: 'SSH' }
+
+# Ansible itself connects with ansible_ssh_pass (see hosts.ini), not a key --
+# defaulting this to false would lock Ansible out on the very next run. Set
+# false per-host/group only once that host has key-based auth confirmed working.
+common_ssh_password_auth: true

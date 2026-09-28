@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically retry Docker containers whose start failed
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+Unit=docker-start-failed.service
+
+[Install]
+WantedBy=timers.target

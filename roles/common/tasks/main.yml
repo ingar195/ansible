@@ -217,3 +217,11 @@
     src: /dev/null
     dest: /etc/systemd/system-generators/systemd-ssh-generator
     state: link
+
+- name: Set SSH password authentication (common_ssh_password_auth)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication '
+    line: "PasswordAuthentication {{ common_ssh_password_auth | ternary('yes', 'no') }}"
+    validate: 'sshd -t -f %s'
+  notify: Restart sshd
