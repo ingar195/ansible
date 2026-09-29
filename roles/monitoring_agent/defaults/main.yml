@@ -1,0 +1,8 @@
+---
+monitoring_server_ip: "10.13.0.20" # monitoring01
+
+# Drop custom app logs in a subfolder here, e.g. /var/log/apps/myapp/out.log
+# -- the subfolder name becomes the `app` label in Loki automatically, no
+# per-app config needed. Harmless no-op on hosts where the directory doesn't
+# exist or is empty.
+monitoring_agent_custom_log_root: /var/log/apps

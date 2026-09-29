@@ -57,3 +57,28 @@
   community.docker.docker_compose_v2:
     project_src: "{{ komodo_dir }}"
     state: present
+
+- name: Deploy failed-container retry script (Manager only)
+  copy:
+    src: docker-start-failed.sh
+    dest: /usr/local/bin/docker-start-failed.sh
+    mode: '0755'
+  when: komodo_type == 'manager'
+
+- name: Deploy failed-container retry service and timer (Manager only)
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: '0644'
+  loop:
+    - docker-start-failed.service
+    - docker-start-failed.timer
+  when: komodo_type == 'manager'
+
+- name: Enable failed-container retry timer (Manager only)
+  systemd:
+    name: docker-start-failed.timer
+    daemon_reload: yes
+    enabled: yes
+    state: started
+  when: komodo_type == 'manager'

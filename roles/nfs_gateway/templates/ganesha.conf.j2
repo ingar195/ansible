@@ -30,6 +30,12 @@ EXPORT {
         Clients = {{ export.clients | join(', ') }};
         Access_Type = RW;
     }
+
+    # Local read-only access for ganesha-healthcheck's loopback probe.
+    CLIENT {
+        Clients = 127.0.0.1;
+        Access_Type = RO;
+    }
 }
 
 {% endfor %}

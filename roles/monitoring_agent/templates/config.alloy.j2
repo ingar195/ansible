@@ -1,0 +1,126 @@
+// Managed by roles/monitoring_agent -- do not hand-edit.
+
+// thermal_zone logs `no data available` every scrape on hosts that expose no
+// thermal zones (pve03); temperatures still come from the hwmon collector.
+prometheus.exporter.unix "default" {
+  disable_collectors = ["thermal_zone"]
+}
+
+// docker_only: true -- reports containers, not the whole host filesystem/cgroup
+// tree; on hosts with no Docker this just reports nothing, harmlessly.
+prometheus.exporter.cadvisor "default" {
+  docker_only = true
+}
+
+prometheus.scrape "default" {
+  targets         = concat(prometheus.exporter.unix.default.targets, prometheus.exporter.cadvisor.default.targets)
+  forward_to      = [prometheus.remote_write.monitoring.receiver]
+  scrape_interval = "15s"
+}
+
+{% if 'ceph_nodes' in group_names %}
+// Ceph mgr Prometheus module (enable with `ceph mgr module enable prometheus`).
+// Only the active mgr serves metrics; on the other nodes this target just
+// shows up=0, which is harmless.
+prometheus.scrape "ceph" {
+  targets         = [{"__address__" = "localhost:9283", "instance" = "{{ ansible_hostname }}"}]
+  job_name        = "ceph"
+  forward_to      = [prometheus.remote_write.monitoring.receiver]
+  scrape_interval = "30s"
+}
+
+{% endif %}
+prometheus.remote_write "monitoring" {
+  endpoint {
+    url = "http://{{ monitoring_server_ip }}:9090/api/v1/write"
+  }
+}
+
+loki.write "monitoring" {
+  endpoint {
+    url = "http://{{ monitoring_server_ip }}:3100/loki/api/v1/push"
+  }
+}
+
+// Alloy always labels these streams job="loki.source.journal.journal" (the
+// component ID); setting job here has no effect, so it is left out. The
+// dashboards (vm-pc-logs) and queries filter on that exact value.
+loki.source.journal "journal" {
+  forward_to = [loki.process.journal.receiver]
+  labels = {
+    host = "{{ ansible_hostname }}",
+  }
+}
+
+// Sysmon-for-Linux floods the journal and the dashboards already exclude it, so
+// drop it here instead of storing and then scanning it in Loki.
+loki.process "journal" {
+  forward_to = [loki.write.monitoring.receiver]
+
+  stage.drop {
+    expression = "Linux-Sysmon"
+  }
+}
+
+{% if monitoring_agent_docker_bin.stat.exists %}
+// Docker API discovery instead of globbing log files directly -- gives real
+// container labels for free. Only rendered where Docker is installed: with no
+// Docker, discovery.docker logs "Unable to refresh target groups" every minute.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_containers" {
+  targets = discovery.docker.containers.targets
+
+  // Alloy's discovery.docker has no clean image-name meta-label (only a
+  // compose label containing the image's sha256 hash) -- container name is
+  // the practical stand-in, since each container maps to one specific image.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "docker" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_containers.output
+  forward_to = [loki.write.monitoring.receiver]
+  labels = {
+    job  = "docker",
+    host = "{{ ansible_hostname }}",
+  }
+}
+{% endif %}
+
+// Custom app logs: drop them in {{ monitoring_agent_custom_log_root }}/<app>/*.log
+// and the subfolder name becomes the `app` label automatically.
+local.file_match "custom_logs" {
+  path_targets = [{"__path__" = "{{ monitoring_agent_custom_log_root }}/*/*.log"}]
+}
+
+discovery.relabel "custom_logs" {
+  targets = local.file_match.custom_logs.targets
+
+  rule {
+    source_labels = ["__path__"]
+    regex         = "{{ monitoring_agent_custom_log_root }}/([^/]+)/.*"
+    target_label  = "app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "custom"
+  }
+
+  rule {
+    target_label = "host"
+    replacement  = "{{ ansible_hostname }}"
+  }
+}
+
+loki.source.file "custom" {
+  targets    = discovery.relabel.custom_logs.output
+  forward_to = [loki.write.monitoring.receiver]
+}
