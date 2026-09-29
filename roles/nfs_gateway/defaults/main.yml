@@ -25,3 +25,12 @@ nfs_exports: []
 ganesha_health_check_interval: "5min"
 ganesha_health_window_seconds: 300
 ganesha_health_threshold: 3
+
+# Ganesha can also hold a stale libcephfs session while its heartbeat still
+# reports healthy. The healthcheck catches that by mounting one export over
+# NFS on localhost and statting it. All exports share Ganesha's single
+# libcephfs session, so probing one is enough. Empty = probe disabled.
+ganesha_health_probe_export: "{{ nfs_exports[0].pseudo_path if nfs_exports else '' }}"
+ganesha_health_probe_timeout: 15
+# Skip all checks this long after Ganesha (re)starts - see the script.
+ganesha_health_startup_grace_seconds: 600

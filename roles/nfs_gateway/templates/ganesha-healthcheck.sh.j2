@@ -1,12 +1,46 @@
 #!/bin/bash
 # Restarts nfs-ganesha if its own health heartbeat has logged "unhealthy"
 # repeatedly and recently - a known failure mode where its worker threads
-# stall while systemd still reports the unit as active.
+# stall while systemd still reports the unit as active. Also restarts it if
+# an export can't be read over NFS (e.g. a stale libcephfs session), since
+# that failure doesn't always produce an "unhealthy" heartbeat line.
 set -euo pipefail
 
 LOG=/var/log/ganesha/ganesha.log
 WINDOW_SECONDS={{ ganesha_health_window_seconds }}
 THRESHOLD={{ ganesha_health_threshold }}
+PROBE_EXPORT="{{ ganesha_health_probe_export }}"
+PROBE_TIMEOUT={{ ganesha_health_probe_timeout }}
+PROBE_DIR=/run/ganesha-healthcheck
+STARTUP_GRACE={{ ganesha_health_startup_grace_seconds }}
+
+# After a hard kill, a fresh Ganesha can sit in startup for minutes waiting
+# for the MDS to drop its old CephFS session. Restarting it then just resets
+# that wait, so leave a recently started instance alone.
+started=$(systemctl show nfs-ganesha -p ActiveEnterTimestamp --value)
+if [ -n "$started" ] && (( $(date +%s) - $(date -d "$started" +%s) < STARTUP_GRACE )); then
+    exit 0
+fi
+
+probe_export() {
+    mkdir -p "$PROBE_DIR"
+    mountpoint -q "$PROBE_DIR" && umount -l "$PROBE_DIR"
+    # soft + short timeo: a dead export returns an error instead of hanging.
+    timeout "$PROBE_TIMEOUT" mount -t nfs4 -o ro,vers=4.2,soft,timeo=30,retrans=1 \
+        "127.0.0.1:$PROBE_EXPORT" "$PROBE_DIR" 2>&1 || return 1
+    local rc=0
+    timeout "$PROBE_TIMEOUT" stat "$PROBE_DIR" >/dev/null 2>&1 || rc=1
+    umount -l "$PROBE_DIR"
+    return $rc
+}
+
+if [ -n "$PROBE_EXPORT" ] && systemctl is-active --quiet nfs-ganesha; then
+    if ! err=$(probe_export); then
+        logger -t ganesha-healthcheck "export $PROBE_EXPORT unreadable over NFS on localhost (${err:-stat timed out}), restarting nfs-ganesha"
+        systemctl restart nfs-ganesha
+        exit 0
+    fi
+fi
 
 [ -f "$LOG" ] || exit 0
 

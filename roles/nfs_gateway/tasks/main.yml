@@ -5,6 +5,7 @@
       - ceph-common
       - nfs-ganesha
       - nfs-ganesha-ceph
+      - nfs-common
     state: present
     update_cache: yes
 

@@ -13,3 +13,13 @@
   ansible.builtin.systemd:
     name: unattended-upgrades
     state: restarted
+
+- name: Restart journald
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+
+- name: Restart sshd
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
