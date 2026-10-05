@@ -29,7 +29,9 @@ probe_export() {
     timeout "$PROBE_TIMEOUT" mount -t nfs4 -o ro,vers=4.2,soft,timeo=30,retrans=1 \
         "127.0.0.1:$PROBE_EXPORT" "$PROBE_DIR" 2>&1 || return 1
     local rc=0
-    timeout "$PROBE_TIMEOUT" stat "$PROBE_DIR" >/dev/null 2>&1 || rc=1
+    # Also look up a child: the export root can stat fine from cache while
+    # lookups beneath it fail on a broken libcephfs session.
+    timeout "$PROBE_TIMEOUT" sh -c 'stat "$1" >/dev/null || exit 1; for d in "$1"/*/; do [ -d "$d" ] || continue; stat "$d" >/dev/null; exit $?; done' _ "$PROBE_DIR" >/dev/null 2>&1 || rc=1
     umount -l "$PROBE_DIR"
     return $rc
 }

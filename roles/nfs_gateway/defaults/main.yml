@@ -22,7 +22,7 @@ nfs_exports: []
 # systemd still reports the unit as active - it logs "Health status is
 # unhealthy" on its own heartbeat when this happens. These control the
 # watchdog timer that restarts it when that's been seen repeatedly.
-ganesha_health_check_interval: "5min"
+ganesha_health_check_interval: "15s"
 ganesha_health_window_seconds: 300
 ganesha_health_threshold: 3
 
@@ -31,6 +31,6 @@ ganesha_health_threshold: 3
 # NFS on localhost and statting it. All exports share Ganesha's single
 # libcephfs session, so probing one is enough. Empty = probe disabled.
 ganesha_health_probe_export: "{{ nfs_exports[0].pseudo_path if nfs_exports else '' }}"
-ganesha_health_probe_timeout: 15
+ganesha_health_probe_timeout: 10
 # Skip all checks this long after Ganesha (re)starts - see the script.
-ganesha_health_startup_grace_seconds: 600
+ganesha_health_startup_grace_seconds: 30

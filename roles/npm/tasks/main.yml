@@ -1,10 +1,4 @@
 ---
-- name: Install nfs-common (needed for Docker's NFS volume driver)
-  ansible.builtin.apt:
-    name: nfs-common
-    state: present
-  when: npm_nfs_server is defined
-
 - name: Allow NPM ports (80/443 public, 81 admin UI)
   community.general.ufw:
     rule: allow
@@ -13,6 +7,7 @@
     comment: "{{ item.comment }}"
   loop: "{{ npm_ports }}"
 
-# Deployment (compose file, container lifecycle) and proxy host/cert config
-# are both owned by Komodo/NPM's own UI now, git-synced from
-# github.com/ingar195/komodo-stacks-dmz -- this role only opens the ports.
+# Deployment (compose file, container lifecycle) is owned by Komodo, synced
+# from github.com/ingar195/compose (proxymanager/). Data lives on this VM's
+# disk in /opt/docker/npm and is covered by the Proxmox/PBS VM backup. This
+# role only opens the ports.

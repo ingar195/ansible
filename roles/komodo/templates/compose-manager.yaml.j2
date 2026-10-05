@@ -9,8 +9,8 @@ services:
     # ports:
     #   - 27017:27017
     volumes:
-      - mongo-data:/data/db
-      - mongo-config:/data/configdb
+      - {{ komodo_dir }}/mongo-data:/data/db
+      - {{ komodo_dir }}/mongo-config:/data/configdb
     env_file: .env
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
@@ -45,23 +45,3 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc:/proc
       - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
-
-volumes:
-  # Mongo
-{% if komodo_nfs_server is defined %}
-  mongo-data:
-    driver: local
-    driver_opts:
-      type: nfs4
-      o: addr={{ komodo_nfs_server }},rw,vers=4.2
-      device: ":{{ komodo_nfs_export_path }}/mongo-data"
-  mongo-config:
-    driver: local
-    driver_opts:
-      type: nfs4
-      o: addr={{ komodo_nfs_server }},rw,vers=4.2
-      device: ":{{ komodo_nfs_export_path }}/mongo-config"
-{% else %}
-  mongo-data:
-  mongo-config:
-{% endif %}
