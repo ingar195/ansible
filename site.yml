@@ -34,6 +34,12 @@
   roles:
     - mini_pc
 
+- name: Expose the Z-Wave stick over TCP (ser2net)
+  hosts: ser2net
+  become: true
+  roles:
+    - ser2net
+
 - name: Setup Z-Wave JS gateway
   hosts: zwavejs
   become: true

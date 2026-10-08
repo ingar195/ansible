@@ -36,9 +36,6 @@ Each group under `group_vars/` has a `vault.example.yml` showing what's needed. 
 | `komodo_all` | `komodo_passkey`, db user/pass, webhook secret, jwt secret, admin password | make these up yourself (strong random values) |
 | `dmz_pc` (nginx proxy manager) | `npm_admin_email`, `npm_admin_password`, `komodo_passkey` | set on first NPM login; passkey must match `komodo_all` |
 | `minio_hosts` | `minio_root_user`, `minio_root_password` | make these up yourself |
-| `nfs_gateway` | `ceph_nfs_gw_client_key` | `ceph auth get-or-create client.nfs-gw ...` on a Ceph node |
-| `nfs_gateway` | `pbs_backup_token_secret` | PBS web UI → Datastore `cephfs-data` → Permissions → API Token |
-| `nfs_gateway` | `pbs_backup_discord_webhook` | Discord channel → Edit Channel → Integrations → Webhooks |
 | `uptime_kuma` | `kuma_username`, `kuma_password` | set on first Uptime Kuma login |
 | `service_wazuh` | many API keys | **skipped for now, not deployed** |
 

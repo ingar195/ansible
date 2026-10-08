@@ -1,0 +1,28 @@
+---
+- name: Install ser2net
+  ansible.builtin.apt:
+    name: ser2net
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Deploy ser2net config
+  ansible.builtin.template:
+    src: ser2net.yaml.j2
+    dest: /etc/ser2net.yaml
+    mode: '0644'
+  notify: Restart ser2net
+
+- name: Allow the Z-Wave serial port from the Z-Wave JS host only
+  community.general.ufw:
+    rule: allow
+    port: "{{ ser2net_port | string }}"
+    proto: tcp
+    src: "{{ ser2net_allowed_client }}"
+    comment: "ser2net Z-Wave ({{ ser2net_allowed_client }} only)"
+
+- name: Enable and start ser2net
+  ansible.builtin.systemd:
+    name: ser2net
+    enabled: yes
+    state: started

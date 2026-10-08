@@ -1,0 +1,8 @@
+%YAML 1.1
+---
+connection: &zwave
+  accepter: tcp,{{ ser2net_port }}
+  enable: on
+  options:
+    kickolduser: true
+  connector: serialdev,{{ ser2net_serial_device }},{{ ser2net_baud }},local
