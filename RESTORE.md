@@ -1,78 +1,73 @@
-# Restoring files from the CephFS backup
+# Restoring from Proxmox backups
 
-Everything on the shared CephFS (`shared-data`) — Komodo's Mongo, Home Assistant,
-NPM, Z-Wave JS, the pve-docker-int01 stacks — is backed up nightly at 02:00 by
-`nfs-gw01` (`10.11.0.53`) to PBS (`10.11.0.31`, datastore `cephfs-data`).
+Every important VM is backed up as a whole by Proxmox to PBS. A broken VM is fixed with
+**Restore** in the Proxmox/PBS UI. No rebuild, no copying files back from a share.
 
-## Small stuff (a file or a folder): use the PBS web UI
+## What is backed up
 
-1. Open PBS → Datastore **cephfs-data** → **Content**.
-2. Expand `host/cephfs-shared-data`, pick the snapshot (date) you want.
-3. Select `shared-data.pxar` → **File Restore**.
-4. Browse to the file/folder → **Download**.
-5. Copy it back to where it belongs (e.g. `scp` it to the Docker host and into
-   the container's volume, or use the steps below to put it straight into CephFS).
+| Item | Value |
+|---|---|
+| Job | Proxmox: Datacenter -> Backup, nightly **02:00**, mode **snapshot**, ZSTD |
+| Target | storage `vm-backup` on pve-backup01 (PBS, 10.11.0.31, https://10.11.0.31:8007) |
+| Consistency | VMs run the QEMU guest agent, so the filesystem is frozen for the snapshot (safe for Mongo, InfluxDB and SQLite) |
+| Retention | set by the prune job on PBS (check there for the current numbers) |
 
-## Bigger restore (a whole service folder)
+Covered (the job is a hand-picked list, so a **new VM must be added to it**):
 
-All on `nfs-gw01`, as root:
+| Host | IP | VM ID | Data lives in |
+|---|---|---|---|
+| pve-mgr01 (Komodo) | 10.11.0.51 | 201 | `/opt/docker/komodo/mongo-data`, `mongo-config`, `backups` |
+| pve-proxy-dmz01 (NPM) | 10.12.0.11 | 203 | `/opt/docker/npm/data`, `/opt/docker/npm/letsencrypt` |
+| pve-docker-int01 (Home Assistant, Grafana, Uptime Kuma, Z-Wave JS, ...) | 10.13.0.12 | 204 | `/opt/docker/ha/...`, `/opt/docker/itstack/...`, `/opt/docker/zwavejs2mqtt` |
+| pve-wazuh | 10.13.0.127 | 300 | inside the VM |
+| tf-state01 (Terraform state, MinIO) | 10.11.0.50 | 510 | inside the VM |
 
-```bash
-ssh user@10.11.0.53
-sudo -i
-set -a; . /etc/pbs-backup.env; set +a
-```
+**Not covered:** mini01 (10.13.0.61, only holds the Z-Wave stick; its `ser2net` config is in Ansible),
+monitoring01 (10.13.0.20, metrics/logs only; dashboards and alerts come from the `compose` repo),
+the test VM `datacenter` (501), and pve-backup01 itself (PBS cannot back itself up; a second PBS
+server is planned).
 
-**1. Find the snapshot:**
+## Restore a whole VM (the normal case)
 
-```bash
-proxmox-backup-client snapshot list
-```
+1. In Proxmox open **Datacenter -> Backup -> `vm-backup`** (or the VM -> Backup tab) and pick the snapshot.
+2. If the VM is HA-managed (all Terraform-created VMs are), set its HA state to **disabled**
+   (Datacenter -> HA) first, and **stop** the VM. HA would otherwise restart it during the restore.
+3. Click **Restore**. Restoring over the same VM ID brings back the disk **and** the VM config
+   (including its MAC address, which matters because the network has MAC-keyed rules).
+4. Start the VM, then set HA back to **started**.
+5. Check it came up: the Docker stacks start by themselves (`restart: unless-stopped`).
+   On pve-docker-int01 also check the Zigbee dongle (`ls /dev/serial/by-id/`) and that Z-Wave JS
+   still shows the controller.
 
-**2. Mount it (read-only):**
+You get the state at the time of the backup, so up to a day of changes can be lost.
 
-```bash
-mkdir -p /mnt/pbs-restore
-proxmox-backup-client mount host/cephfs-shared-data/<time> shared-data.pxar /mnt/pbs-restore
-```
+## Restore one file or folder
 
-Paths inside match CephFS, e.g. `/mnt/pbs-restore/komodo-manager/mongo-data`,
-`/mnt/pbs-restore/pve-docker-int01/ha/ha`, `/mnt/pbs-restore/npm/data`.
+1. PBS (https://10.11.0.31:8007) -> datastore **vm-backup** -> Content -> `vm/<id>` -> pick the snapshot.
+2. Choose the disk (`drive-scsi0`) -> **File Restore** -> browse -> **Download**.
+3. Put the file back on the host (paths in the table above), with the container stopped.
+   Keep ownership as it was (Mongo uses uid 999). If you copy SQLite databases by hand
+   (Home Assistant, Grafana, Uptime Kuma), stop the container first and remove stale
+   `-wal`/`-shm` files, or just restore the whole VM instead.
 
-**3. Mount CephFS writable** (`/mnt/cephfs-backup` is read-only on purpose):
+## Run a backup now / test a restore
 
-```bash
-mkdir -p /mnt/cephfs-rw
-ceph-fuse --id nfs-gw /mnt/cephfs-rw
-```
+- Backup now: Datacenter -> Backup -> select the job -> **Run now**, or on the node
+  `vzdump <vmid> --storage vm-backup --mode snapshot`.
+- Test a restore (do this now and then): restore to a **spare VM ID**, remove or disable its
+  network device **before the first boot** (it would clash with the live IP and MAC), check it boots,
+  then delete it.
 
-**4. Stop the service that uses the folder** (in Komodo, or `docker compose down`
-on its host) so nothing writes while you copy.
+## If a VM and its backups are both gone
 
-**5. Copy back:**
+Rebuild the VM from the Terraform repo (it only creates the machine), configure it with
+`ansible-playbook -i hosts.ini site.yml --limit <ip>`, and deploy the stacks from Komodo. The
+data is **not** recreated by that: it comes only from a backup. This is why a second PBS server
+(offsite or on separate hardware) matters.
 
-```bash
-# Make the folder identical to the backup (removes files not in the backup):
-rsync -aHAX --delete /mnt/pbs-restore/<path>/ /mnt/cephfs-rw/<path>/
+## Old CephFS backups
 
-# Or just put back/overwrite files, keeping anything newer:
-rsync -aHAX /mnt/pbs-restore/<path>/ /mnt/cephfs-rw/<path>/
-```
-
-Keep the trailing `/` on both paths.
-
-**6. Clean up and start the service again:**
-
-```bash
-umount /mnt/pbs-restore /mnt/cephfs-rw
-```
-
-## Good to know
-
-- **Databases** (Komodo Mongo, InfluxDB, SQLite in NPM / Uptime Kuma / Home
-  Assistant) are copied while running, so a restored copy may need a repair or
-  be slightly inconsistent. Config folders restore cleanly.
-- **Check the backup actually has data:** `proxmox-backup-client snapshot list`
-  shows the size — a tiny snapshot means the CephFS mount wasn't there.
-- **Run a backup right now:** `sudo systemctl start pbs-backup.service`
-  (on `nfs-gw01`), then `sudo journalctl -u pbs-backup.service -n 30`.
+Before the move back to local disks, `pve-docker-int01`, `pve-mgr01`, `pve-proxy-dmz01` and
+`mini01` kept their data on CephFS, backed up nightly by nfs-gw01 into the PBS datastore
+`cephfs-data` (until nfs-gw01 was retired). That datastore only holds old snapshots; it can be
+deleted once you no longer need them.

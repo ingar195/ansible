@@ -22,9 +22,9 @@ kuma_monitors:
   - name: pve-mgn01 (Komodo manager)
     host: 10.11.0.51
     group: VMs
-  - name: nfs-gw01
-    host: 10.11.0.53
-    group: VMs
+  # - name: nfs-gw01
+  #   host: 10.11.0.53
+  #   group: VMs
   - name: pve-docker-int01
     host: 10.13.0.12
     group: VMs
@@ -66,10 +66,10 @@ kuma_monitors:
   - name: USB/IP Server
     host: 10.13.0.61
     port: 3240 # USB/IP protocol, not HTTP -- plain TCP check
-    group: mini01
+    group: HA
   - name: Z-Wave JS UI
-    url: "http://10.13.0.61:8091"
-    group: mini01
+    url: "http://10.13.0.12:8091"
+    group: HA
 
   # General dashboard/utility containers -- no natural home in another group.
   - name: Homarr

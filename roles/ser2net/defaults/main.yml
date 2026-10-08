@@ -1,0 +1,9 @@
+---
+# Exposes a serial device (the Z-Wave stick on mini01) as a raw TCP port, so Z-Wave JS can run
+# on another host with serial port `tcp://<this host>:<port>`. Unlike USB/IP, a dropped connection
+# just reconnects (verified 2026-10-06: ser2net restart, Z-Wave JS reconnected on its own).
+ser2net_serial_device: /dev/serial/by-id/usb-0658_0200-if00
+ser2net_baud: "115200n81"
+ser2net_port: 3333
+# Only this host may connect (UFW). pve-docker-int01.
+ser2net_allowed_client: 10.13.0.12

@@ -2,3 +2,4 @@
 zwavejs_ports:
   - { port: '8091', proto: 'tcp', comment: 'Z-Wave JS UI Web Interface' }
   - { port: '3000', proto: 'tcp', comment: 'Z-Wave JS Websocket Server' }
+  - { port: '3501', proto: 'tcp', comment: 'Z-Wave JS Websocket (host port, compose maps 3501 -> 3000)' }
