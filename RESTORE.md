@@ -22,7 +22,7 @@ Covered (the job is a hand-picked list, so a **new VM must be added to it**):
 | pve-wazuh | 10.13.0.127 | 300 | inside the VM |
 | tf-state01 (Terraform state, MinIO) | 10.11.0.50 | 510 | inside the VM |
 
-**Not covered:** mini01 (10.13.0.61, only holds the Z-Wave stick; its `ser2net` config is in Ansible),
+**Not covered:** mini01 (10.13.0.61, only holds the Zigbee and Z-Wave dongles; its `usb_ip_server` and `ser2net` config is in Ansible),
 monitoring01 (10.13.0.20, metrics/logs only; dashboards and alerts come from the `compose` repo),
 the test VM `datacenter` (501), and pve-backup01 itself (PBS cannot back itself up; a second PBS
 server is planned).

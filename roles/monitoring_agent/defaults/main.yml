@@ -6,3 +6,8 @@ monitoring_server_ip: "10.13.0.20" # monitoring01
 # per-app config needed. Harmless no-op on hosts where the directory doesn't
 # exist or is empty.
 monitoring_agent_custom_log_root: /var/log/apps
+
+# SMART metrics (drive health, SSD wear) via Alloy's textfile collector. Only
+# set up on hosts that can see real disks -- VM virtual disks have no SMART.
+monitoring_agent_textfile_dir: /var/lib/alloy/textfile
+monitoring_agent_smart_enabled: "{{ ansible_virtualization_role | default('host') != 'guest' }}"

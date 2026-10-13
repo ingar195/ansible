@@ -68,6 +68,62 @@
     path: /usr/bin/docker
   register: monitoring_agent_docker_bin
 
+- name: Create the textfile collector directory (Alloy config references it on every host)
+  ansible.builtin.file:
+    path: "{{ monitoring_agent_textfile_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Install smartmontools and jq (SMART metrics, physical hosts only)
+  ansible.builtin.apt:
+    name: [smartmontools, jq]
+    state: present
+  when: monitoring_agent_smart_enabled | bool
+
+- name: Install the SMART metrics script
+  ansible.builtin.copy:
+    src: smart-textfile.sh
+    dest: /usr/local/bin/smart-textfile.sh
+    mode: '0755'
+  when: monitoring_agent_smart_enabled | bool
+
+- name: Install the SMART metrics service and timer
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    content: "{{ item.content }}"
+    mode: '0644'
+  loop:
+    - name: smart-textfile.service
+      content: |
+        [Unit]
+        Description=Write SMART metrics for Alloy
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/smart-textfile.sh
+    - name: smart-textfile.timer
+      content: |
+        [Unit]
+        Description=Write SMART metrics every 10 minutes
+
+        [Timer]
+        OnBootSec=2min
+        OnUnitActiveSec=10min
+
+        [Install]
+        WantedBy=timers.target
+  when: monitoring_agent_smart_enabled | bool
+
+- name: Enable the SMART metrics timer
+  ansible.builtin.systemd:
+    name: smart-textfile.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: monitoring_agent_smart_enabled | bool
+  # --check only simulates the unit files above, so the timer can't be found yet
+  ignore_errors: "{{ ansible_check_mode }}"
+
 - name: Deploy Alloy config
   template:
     src: config.alloy.j2

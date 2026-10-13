@@ -1,0 +1,21 @@
+---
+- name: Install corosync-qnetd
+  ansible.builtin.apt:
+    name: corosync-qnetd
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Allow the Proxmox nodes to reach the QDevice daemon
+  community.general.ufw:
+    rule: allow
+    port: "{{ qdevice_port | string }}"
+    proto: tcp
+    src: "{{ qdevice_allowed_clients }}"
+    comment: "corosync-qnetd QDevice ({{ qdevice_allowed_clients }} only)"
+
+- name: Enable and start corosync-qnetd
+  ansible.builtin.systemd:
+    name: corosync-qnetd
+    enabled: yes
+    state: started

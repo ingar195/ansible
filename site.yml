@@ -40,6 +40,13 @@
   roles:
     - ser2net
 
+- name: Setup the Proxmox cluster QDevice (corosync-qnetd)
+  hosts: qdevice_server
+  become: true
+  tags: [qdevice]
+  roles:
+    - qdevice_server
+
 - name: Setup Z-Wave JS gateway
   hosts: zwavejs
   become: true
