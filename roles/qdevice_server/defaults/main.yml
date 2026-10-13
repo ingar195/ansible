@@ -1,0 +1,8 @@
+---
+# corosync-qnetd: the external vote ("QDevice") for the Proxmox cluster. Runs on a small host
+# outside the cluster; the cluster nodes connect to it (TCP 5403). Set up on the cluster side with
+# `pvecm qdevice setup <this host>` once the cluster has an even number of nodes (an odd count
+# is not supported by Proxmox).
+qdevice_port: 5403
+# The Proxmox nodes' network (10.11.0.0/24). The new node tomorrow is in it too.
+qdevice_allowed_clients: 10.11.0.0/24

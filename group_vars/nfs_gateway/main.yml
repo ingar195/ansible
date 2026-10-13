@@ -10,10 +10,6 @@ nfs_exports:
     pseudo_path: /komodo-manager
     cephfs_path: /komodo-manager
     clients: ["10.11.0.51"]
-  - export_id: 20
-    pseudo_path: /zwavejs
-    cephfs_path: /zwavejs
-    clients: ["10.13.0.61"]
   - export_id: 30
     pseudo_path: /npm
     cephfs_path: /npm

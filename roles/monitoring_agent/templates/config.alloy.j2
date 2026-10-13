@@ -4,6 +4,11 @@
 // thermal zones (pve03); temperatures still come from the hwmon collector.
 prometheus.exporter.unix "default" {
   disable_collectors = ["thermal_zone"]
+
+  // SMART metrics written by smart-textfile.sh (see the smart-textfile timer).
+  textfile {
+    directory = "{{ monitoring_agent_textfile_dir }}"
+  }
 }
 
 // docker_only: true -- reports containers, not the whole host filesystem/cgroup

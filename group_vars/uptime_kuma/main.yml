@@ -62,7 +62,7 @@ kuma_monitors:
     group: SOC
     insecure: true
   # mini01 -- physical mini PC, not a VM, hosts the USB/IP server (shares
-  # the Zigbee/Z-Wave dongles over the network) and Z-Wave JS UI.
+  # the Zigbee dongle over the network) and ser2net (Z-Wave stick, tcp 3333).
   - name: USB/IP Server
     host: 10.13.0.61
     port: 3240 # USB/IP protocol, not HTTP -- plain TCP check
