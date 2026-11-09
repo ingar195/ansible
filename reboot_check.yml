@@ -1,0 +1,48 @@
+---
+# Imported at the end of site.yml and update.yml. Only reports, never reboots
+# (reboot_all.yml does that, one host at a time).
+- name: Check which hosts need a reboot
+  hosts: all
+  gather_facts: false
+  tags: [reboot_check, update]
+  tasks:
+    # uname instead of the kernel fact: facts are cached for an hour, so right
+    # after a reboot the cached kernel would still look outdated.
+    - name: Running kernel
+      ansible.builtin.command: uname -r
+      register: reboot_running_kernel
+      changed_when: false
+
+    - name: Newest installed kernel
+      ansible.builtin.shell: ls /boot/vmlinuz-* | sed 's|/boot/vmlinuz-||' | sort -V | tail -1
+      register: reboot_newest_kernel
+      changed_when: false
+      failed_when: false
+
+    - name: Reboot-required flag (set by some packages)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_flag
+
+    - name: Remember the result
+      ansible.builtin.set_fact:
+        reboot_reason: >-
+          {{ 'kernel ' + reboot_running_kernel.stdout + ' running, ' + reboot_newest_kernel.stdout + ' installed'
+             if reboot_newest_kernel.stdout | length > 0 and reboot_newest_kernel.stdout != reboot_running_kernel.stdout
+             else ('a package asked for a reboot' if reboot_flag.stat.exists else '') }}
+
+- name: Reboot summary
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [reboot_check, update]
+  tasks:
+    - name: Collect hosts that need a reboot
+      ansible.builtin.set_fact:
+        reboot_hosts: "{{ reboot_hosts | default([]) + [item ~ ': ' ~ hostvars[item].reboot_reason] }}"
+      loop: "{{ groups['all'] }}"
+      when: hostvars[item].reboot_reason | default('') | length > 0
+
+    - name: Show the result
+      ansible.builtin.debug:
+        msg: "{{ ['Reboot needed on:'] + reboot_hosts if reboot_hosts is defined else ['No host needs a reboot'] }}"

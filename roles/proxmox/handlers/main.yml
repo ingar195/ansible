@@ -3,3 +3,8 @@
   service:
     name: fail2ban
     state: restarted
+
+- name: Restart Proxmox web service
+  service:
+    name: "{{ proxmox_web_service }}"
+    state: restarted

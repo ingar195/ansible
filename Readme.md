@@ -68,8 +68,7 @@ ansible-vault view group_vars/all/vault.yml
 - **monitoring_server**: Only prepares `monitoring01`'s data disk (partition, format, mount at `/data`, per-service directories with each image's non-root uid). The services themselves are a Komodo-managed compose stack, not this role.
 - **nfs_gateway** and **pbs_backup**: **retired.** Data used to live on a CephFS share served by an NFS gateway (nfs-gw01, 10.11.0.53) and was backed up from there. All hosts now keep their data on local disk, covered by whole-VM backups, so these two roles (and the `nfs_gateway` group) are only kept until nfs-gw01 is destroyed. See [RESTORE.md](RESTORE.md) and `PLAN-vm-backup-restore.md`.
 - **npm**: Deploys nginx-proxy-manager (DMZ PC only) via a Komodo-managed compose stack (`compose` repo, `proxymanager/`), data on the VM's local disk (`/opt/docker/npm`). No default admin in current NPM versions — first run bootstraps via an unauthenticated `POST /api/users`. Opens UFW 80/443/81.
-- **pegaprox**: Opens and manages firewall rules for PegaProx-related services using the shared allowed-port definitions.
-- **proxmox**: Applies Proxmox-specific firewall rules and ensures UFW is enabled on Proxmox hosts.
+- **proxmox**: Runs on `proxmox_hosts` (pve01-04) and `pbs_vms` (pbs01, 10.11.0.31) as the first play in `site.yml`, before `common`. It disables the enterprise apt repos (no subscription) and adds the no-subscription repo (`pve-no-subscription`, or `pbs-no-subscription` for the backup server) unless a node already has one, hides the subscription popup, and sets up UFW. The backup server gets its own values from `group_vars/pbs_vms` (SSH and 8007 only, no cluster ports). Ports live in `roles/proxmox/defaults/main.yml`: `proxmox_public_ports` (SSH, web UI 8006, VNC, SPICE) are open to everyone, and `proxmox_cluster_ports` (corosync, live migration) only from `proxmox_cluster_nets` (`10.11.0.0/24`). Add the direct-link/side networks (for example `10.99.0.0/24`) to `proxmox_cluster_nets`, or UFW drops migrations over them. SSH (22) stays open to everyone, because Ansible connects from outside that network. Ceph is no longer used, so its ports are not opened. UFW only adds rules, so delete old broad rules by hand with `ufw status numbered`.
 - **proxmox_snapshot**: Creates timestamped VM snapshots for listed Proxmox VMs and optionally runs manual snapshot cleanup tasks.
 - **template**: Placeholder role that currently only updates apt cache and is intended as a starter for new host-role implementations.
 - **uptime_kuma**: Syncs monitors into the already-running Uptime Kuma instance (`10.13.0.12:3001`, deployed via Komodo, not this role) from `kuma_monitors` in `group_vars/uptime_kuma/main.yml` — same "list of desired state" pattern as `npm_proxy_hosts`. Each entry is a host ping, or a TCP port check if `port` is set; an optional `group` nests it under a Kuma group monitor (auto-created). Idempotent by name — reruns add what's missing, retrofit the alert notification, and correct the URL of an existing HTTP monitor if `group_vars` differs from it. Run just this play with `--tags uptime_kuma --limit 10.13.0.12`. Uptime Kuma has no REST API, only Socket.IO, so this drives it via the `uptime-kuma-api` Python package installed into an isolated venv (the host has no system pip, and PEP 668 blocks a bare install).
@@ -114,6 +113,21 @@ By default, these playbooks will **enable UFW and Fail2Ban**.
 - `uptime_kuma`'s credential is a full Kuma admin login (username/password) — Kuma has no scoped API token, so `group_vars/uptime_kuma/vault.yml` holds a standing admin credential same as everything else in this section.
 - The Terraform `proxmox_vm` module supports pinning `mac_address` — use it whenever recreating a VM on a network segment that might have a MAC-keyed switch/firewall/DHCP rule (a fresh clone gets a new MAC every time). Grab the old VM's MAC from its Proxmox config *before* destroying it.
 
+
+## Rebooting
+
+`site.yml` and `update.yml` end with a summary of which hosts need a reboot (newer kernel installed, or a package asked for one). Run it alone any time:
+
+```bash
+ansible-playbook -i hosts.ini reboot_check.yml
+```
+
+It only reports. Rebooting is done by hand, in this order:
+
+1. **VMs first**, one at a time: `ansible-playbook -i hosts.ini reboot_all.yml --limit <ip>` (it covers the `all_vms` group, including mini01).
+2. **Proxmox nodes (pve01-04), one at a time, never two together.** The cluster has four nodes plus the QDevice vote on mini01, so quorum is gone if too many are down at once. Before each node, migrate or stop its VMs (or let HA move them), and wait until it is back in the cluster before starting the next.
+3. **pve04 hosts pbs01** (VM 601, the backup server). Don't reboot it around the nightly 02:00 backup.
+4. **mini01 (10.13.0.61) last**, and never while a node is down: it is the QDevice vote, and it also serves the Z-Wave stick (ser2net) and the Zigbee dongle (USB/IP), so Home Assistant loses both for a few minutes.
 
 ## Backups and restore
 

@@ -1,0 +1,130 @@
+---
+# Upgrade existing Wazuh 4.14.x Debian agents to the 5.0.0-rc2 agent.
+#
+# Prereqs (once), both in files/ next to this playbook:
+#   1. files/wazuh-root-ca.pem  = the 5.x manager's root CA
+#        (single-node/config/root-ca/certs/root-ca.pem on the manager)
+#   2. files/wazuh-agent_5.0.0-rc2_amd64.deb = the agent package
+#        (pre-release host, packages-staging.xdrsiem.wazuh.info). It is copied
+#        from the controller, because that CloudFront-hosted domain can't be
+#        reliably allow-listed by domain on the UniFi firewall.
+#
+# Run one host first, then the rest (serial: 1 stops at the first failure):
+#   ansible-playbook -i hosts.ini wazuh_agent_upgrade_5x.yml -l pve02
+#   ansible-playbook -i hosts.ini wazuh_agent_upgrade_5x.yml
+#
+# Order matters: the root CA goes in BEFORE the package, so the upgraded
+# agent verifies the manager's TLS cert instead of running with it disabled.
+# Agents keep their id/key (client.keys); nothing re-enrolls.
+
+- name: Upgrade Wazuh agents to 5.0.0-rc2
+  hosts: all
+  become: true
+  serial: 1
+  any_errors_fatal: true
+
+  vars:
+    wazuh_agent_deb_src: files/wazuh-agent_5.0.0-rc2_amd64.deb
+    wazuh_agent_deb_dest: /var/tmp/wazuh-agent_5.0.0-rc2_amd64.deb
+    # The package tested on the manager's own agent (001).
+    wazuh_agent_deb_sha256: 20b4978d8cff37b56214769c5ae477bc545377d15586e501088f5bb95dd0343b
+
+  tasks:
+    - name: Checksum of the package on the controller
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/{{ wazuh_agent_deb_src }}"
+        checksum_algorithm: sha256
+      register: wazuh_agent_deb_stat
+      delegate_to: localhost
+      vars:
+        ansible_become: false   # hosts.ini sets ansible_become=yes for everything
+      run_once: true
+
+    - name: Refuse to continue unless it is the tested package
+      ansible.builtin.assert:
+        that:
+          - wazuh_agent_deb_stat.stat.exists
+          - wazuh_agent_deb_stat.stat.checksum == wazuh_agent_deb_sha256
+        fail_msg: "{{ wazuh_agent_deb_src }} is missing or its sha256 differs from the tested package."
+      run_once: true
+
+    - name: Installed wazuh-agent version
+      ansible.builtin.command: dpkg-query -W -f='${Version}' wazuh-agent
+      register: wazuh_agent_version
+      changed_when: false
+      failed_when: false
+
+    # Skips hosts without the agent, non-Debian/non-amd64 hosts, and any host
+    # already on 5.x (e.g. the manager VM itself).
+    - name: Upgrade this host
+      when:
+        - ansible_os_family == "Debian"
+        - ansible_architecture == "x86_64"
+        - wazuh_agent_version.rc == 0
+        - wazuh_agent_version.stdout is version('5.0.0', '<')
+      block:
+        # An upgraded agent talks HTTPS to <address>:1517. If this host cannot
+        # reach that, stop BEFORE changing anything instead of taking it offline.
+        - name: Address this agent dials
+          ansible.builtin.command: grep -oP '<address>\K[^<]+' /var/ossec/etc/ossec.conf
+          register: wazuh_agent_address
+          changed_when: false
+
+        - name: The manager must be reachable on 1517 from this host
+          ansible.builtin.wait_for:
+            host: "{{ wazuh_agent_address.stdout_lines | first }}"
+            port: 1517
+            timeout: 5
+
+        - name: Create the agent certs directory
+          ansible.builtin.file:
+            path: /var/ossec/etc/certs
+            state: directory
+            owner: root
+            group: wazuh
+            mode: "0750"
+
+        - name: Install the manager root CA (before the package)
+          ansible.builtin.copy:
+            src: files/wazuh-root-ca.pem
+            dest: /var/ossec/etc/certs/root-ca.pem
+            owner: root
+            group: wazuh
+            mode: "0640"
+
+        - name: Copy the 5.0.0-rc2 agent package from the controller
+          ansible.builtin.copy:
+            src: "{{ wazuh_agent_deb_src }}"
+            dest: "{{ wazuh_agent_deb_dest }}"
+            mode: "0644"
+
+        # apt's default dpkg_options include force-confold, so the existing
+        # agent config is kept and the install never waits at a conffile prompt.
+        - name: Install the package
+          ansible.builtin.apt:
+            deb: "{{ wazuh_agent_deb_dest }}"
+            state: present
+
+        - name: Ensure the agent is running
+          ansible.builtin.service:
+            name: wazuh-agent
+            state: started
+            enabled: true
+
+        - name: Give the agent time to connect
+          ansible.builtin.pause:
+            seconds: 20
+
+        - name: Recent agent log
+          ansible.builtin.command: tail -n 15 /var/ossec/logs/ossec.log
+          register: wazuh_agent_log
+          changed_when: false
+
+        - name: Show it (look for connection errors / TLS warnings)
+          ansible.builtin.debug:
+            var: wazuh_agent_log.stdout_lines
+
+        - name: Remove the downloaded package
+          ansible.builtin.file:
+            path: "{{ wazuh_agent_deb_dest }}"
+            state: absent

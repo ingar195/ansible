@@ -1,0 +1,11 @@
+---
+# Ports opened on the Wazuh manager VM (service_wazuh).
+# Docker-published ports bypass ufw, so these mostly keep the rule set honest
+# and cover anything not published through Docker.
+wazuh_manager_ports:
+  - { port: '1514', proto: 'tcp', comment: 'Wazuh Agent communication (4.x agents, legacy)' }
+  - { port: '1515', proto: 'tcp', comment: 'Wazuh Agent enrollment (4.x agents)' }
+  - { port: '1516', proto: 'tcp', comment: 'Wazuh Cluster daemon' }
+  - { port: '1517', proto: 'tcp', comment: 'Wazuh 5 agent HTTPS (connection and enrollment)' }
+  - { port: '55000', proto: 'tcp', comment: 'Wazuh RESTful API' }
+  - { port: '443', proto: 'tcp', comment: 'Wazuh Dashboard (HTTPS)' }
