@@ -1,3 +1,24 @@
 ---
-common_ports:
-  - { port: '5000', proto: 'tcp', comment: 'PegaProx Web Interface' }
+# PVE defaults. Backup servers override these in group_vars/pbs_vms.
+proxmox_nosub_repo:
+  uri: http://download.proxmox.com/debian/pve
+  component: pve-no-subscription
+proxmox_web_service: pveproxy
+
+# Open to everyone. 22 is here on purpose: node-to-node SSH (migration, cluster
+# commands) and Ansible itself both need it, and UFW denies everything else.
+proxmox_public_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }
+  - { port: '8006', proto: 'tcp', comment: 'Proxmox Web Interface' }
+  - { port: '5900:5999', proto: 'tcp', comment: 'VNC console' }
+  - { port: '3128', proto: 'tcp', comment: 'SPICE proxy' }
+
+# Cluster-internal traffic: only accepted from proxmox_cluster_nets.
+proxmox_cluster_ports:
+  - { port: '5405:5412', proto: 'udp', comment: 'Corosync Cluster' }
+  - { port: '60000:60050', proto: 'tcp', comment: 'Live Migration' }
+
+# Add the direct-link / side networks here when they exist (for example
+# 10.99.0.0/24), or migrations over them are dropped by UFW.
+proxmox_cluster_nets:
+  - 10.11.0.0/24

@@ -1,4 +1,11 @@
 ---
+- name: Setup proxmox
+  hosts: proxmox_hosts:pbs_vms
+
+  become: true
+  roles:
+    - proxmox
+
 - name: Configure Base System
   hosts: all
   become: true
@@ -17,6 +24,13 @@
   become: true
   roles:
     - wazuh_agent
+
+- name: Wazuh manager firewall ports
+  hosts: service_wazuh
+  become: true
+  tags: [wazuh_manager]
+  roles:
+    - wazuh_manager
 
 - name: Setup Komodo Manager
   hosts: komodo_all
@@ -60,13 +74,6 @@
     - docker
     - minio
 
-- name: Setup NFS-Ganesha gateway
-  hosts: nfs_gateway
-  become: true
-  roles:
-    - nfs_gateway
-    - pbs_backup
-
 - name: Setup DMZ PC
   hosts: dmz_pc
   become: true
@@ -89,7 +96,9 @@
 
 - name: Setup monitoring server data disk
   hosts: monitoring_server
-  tags: [onitoring]
+  tags: [monitoring]
   become: true
   roles:
     - monitoring_server
+
+- import_playbook: reboot_check.yml

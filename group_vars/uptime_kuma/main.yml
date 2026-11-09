@@ -22,9 +22,6 @@ kuma_monitors:
   - name: pve-mgn01 (Komodo manager)
     host: 10.11.0.51
     group: VMs
-  # - name: nfs-gw01
-  #   host: 10.11.0.53
-  #   group: VMs
   - name: pve-docker-int01
     host: 10.13.0.12
     group: VMs

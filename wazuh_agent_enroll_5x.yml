@@ -1,0 +1,197 @@
+---
+# Register 5.x Wazuh agents the manager does not know yet (e.g. a host whose
+# 4.x agent was never part of the imported set, like pve01).
+#
+# Per host, serially:
+#   1. skip unless the host runs a 5.x agent
+#   2. read the key id from the agent's client.keys and ask the manager API
+#      whether it knows that id; skip if so
+#   3. mint a 1h enrollment token on the manager (docker exec ... authd)
+#   4. enroll the agent with it (--force-enroll if it holds a key the manager
+#      does not know; it gets a NEW id), then delete the token file
+#   5. ask the API again and fail unless the agent is now registered
+#
+# Run one host, then everyone (already-registered hosts are skipped):
+#   ansible-playbook -i hosts.ini wazuh_agent_enroll_5x.yml -l 10.11.0.11
+#   ansible-playbook -i hosts.ini wazuh_agent_enroll_5x.yml
+#
+# The agent is always started again afterwards, even if enrollment fails.
+
+- name: Enroll unregistered Wazuh 5.x agents
+  hosts: all
+  become: true
+  serial: 1
+  any_errors_fatal: true
+
+  vars:
+    wazuh_manager_host: "{{ groups['service_wazuh'][0] }}"
+    wazuh_manager_compose_dir: /opt/docker/wazuh5/single-node
+    wazuh_manager_container: single-node-wazuh.manager
+    wazuh_api_url: https://localhost:55000
+    wazuh_agent_name: "{{ ansible_hostname }}"
+    wazuh_token_file: /var/tmp/wazuh-enroll-token
+
+  tasks:
+    - name: Installed wazuh-agent version
+      ansible.builtin.command: dpkg-query -W -f='${Version}' wazuh-agent
+      register: wazuh_agent_version
+      changed_when: false
+      failed_when: false
+
+    - name: Enroll this host if the manager does not know it
+      when:
+        - ansible_os_family == "Debian"
+        - wazuh_agent_version.rc == 0
+        - wazuh_agent_version.stdout is version('5.0.0', '>=')
+      block:
+        # --- manager API access (runs on the manager VM) -------------------
+        - name: Read the manager API credentials
+          ansible.builtin.slurp:
+            src: "{{ wazuh_manager_compose_dir }}/config/credentials/manager.env"
+          register: wazuh_manager_env
+          delegate_to: "{{ wazuh_manager_host }}"
+          no_log: true
+
+        - name: Extract the API password
+          ansible.builtin.set_fact:
+            wazuh_api_password: >-
+              {{ wazuh_manager_env.content | b64decode
+                 | regex_search('^WAZUH_MANAGER_API_PASSWORD=(.*)$', '\1', multiline=True) | first }}
+          no_log: true
+
+        - name: Authenticate to the manager API
+          ansible.builtin.uri:
+            url: "{{ wazuh_api_url }}/security/user/authenticate?raw=true"
+            method: POST
+            url_username: wazuh
+            url_password: "{{ wazuh_api_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            return_content: true
+          register: wazuh_api_token
+          delegate_to: "{{ wazuh_manager_host }}"
+          no_log: true
+
+        # Registered = the manager knows the key id this host already holds.
+        # (By id, not hostname, so a differently named agent is never re-enrolled.)
+        - name: Key id this agent currently holds
+          ansible.builtin.command: awk 'NR==1{print $1}' /var/ossec/etc/client.keys
+          register: wazuh_agent_key_id
+          changed_when: false
+          failed_when: false
+
+        - name: Does it hold a key?
+          ansible.builtin.set_fact:
+            wazuh_agent_has_key: "{{ wazuh_agent_key_id.stdout | trim | length > 0 }}"
+
+        - name: Look that key id up on the manager
+          when: wazuh_agent_has_key
+          ansible.builtin.uri:
+            url: "{{ wazuh_api_url }}/agents?agents_list={{ wazuh_agent_key_id.stdout | trim }}&select=id,name,status"
+            headers:
+              Authorization: "Bearer {{ wazuh_api_token.content }}"
+            validate_certs: false
+            return_content: true
+          register: wazuh_agent_lookup
+          delegate_to: "{{ wazuh_manager_host }}"
+          no_log: true
+
+        - name: Is it registered?
+          ansible.builtin.set_fact:
+            wazuh_agent_registered: >-
+              {{ wazuh_agent_has_key and
+                 ((wazuh_agent_lookup.json | default({})).get('data', {}).get('total_affected_items', 0) > 0) }}
+
+        - name: Report
+          ansible.builtin.debug:
+            msg: >-
+              {{ wazuh_agent_name }} (key id {{ wazuh_agent_key_id.stdout | trim | default('none', true) }}):
+              {{ 'already registered, skipping' if wazuh_agent_registered
+                 else 'not registered, enrolling' }}
+
+        # --- enrollment ----------------------------------------------------
+        - name: Enroll
+          when: not wazuh_agent_registered
+          block:
+            - name: Address this agent dials
+              ansible.builtin.command: grep -oP '<address>\K[^<]+' /var/ossec/etc/ossec.conf
+              register: wazuh_agent_address
+              changed_when: false
+
+            - name: Mint a 1h enrollment token on the manager
+              ansible.builtin.command: >-
+                docker exec {{ wazuh_manager_container }}
+                /var/wazuh-manager/bin/wazuh-manager-authd
+                --create-enrollment-token
+                --address {{ wazuh_agent_address.stdout_lines | first }}
+                --ttl 1h
+              register: wazuh_enroll_token
+              changed_when: true
+              delegate_to: "{{ wazuh_manager_host }}"
+              no_log: true
+
+            - name: Write the token file on the agent
+              ansible.builtin.copy:
+                content: "{{ wazuh_enroll_token.stdout }}\n"
+                dest: "{{ wazuh_token_file }}"
+                owner: root
+                group: root
+                mode: "0600"
+              no_log: true
+
+            - name: Stop the agent, enroll, start the agent
+              block:
+                - name: Stop the agent
+                  ansible.builtin.service:
+                    name: wazuh-agent
+                    state: stopped
+
+                # An agent that already holds a key the manager does not know
+                # needs --force-enroll; it gets a NEW id. (Decided from the
+                # local client.keys, not the manager, per wazuh-agent-auth.)
+                - name: Enroll with the token
+                  ansible.builtin.command: >-
+                    /var/ossec/bin/wazuh-agent-auth --token-file {{ wazuh_token_file }}
+                    {{ '--force-enroll' if wazuh_agent_has_key else '' }}
+                  register: wazuh_agent_auth
+                  changed_when: true
+
+                - name: Start the agent
+                  ansible.builtin.service:
+                    name: wazuh-agent
+                    state: started
+                    enabled: true
+              always:
+                - name: Delete the token file
+                  ansible.builtin.file:
+                    path: "{{ wazuh_token_file }}"
+                    state: absent
+
+                - name: Never leave the agent stopped, even if enrollment failed
+                  ansible.builtin.service:
+                    name: wazuh-agent
+                    state: started
+
+            - name: Give the manager a moment to register it
+              ansible.builtin.pause:
+                seconds: 20
+
+            - name: Look the agent up again
+              ansible.builtin.uri:
+                url: "{{ wazuh_api_url }}/agents?name={{ wazuh_agent_name }}&select=id,name,status"
+                headers:
+                  Authorization: "Bearer {{ wazuh_api_token.content }}"
+                validate_certs: false
+                return_content: true
+              register: wazuh_agent_after
+              delegate_to: "{{ wazuh_manager_host }}"
+              no_log: true
+
+            - name: Fail unless it is registered now
+              ansible.builtin.assert:
+                that: wazuh_agent_after.json.data.total_affected_items == 1
+                fail_msg: "{{ wazuh_agent_name }} is still not registered on the manager. Check /var/ossec/logs/ossec.log on the host."
+                success_msg: >-
+                  {{ wazuh_agent_name }} registered as
+                  {{ wazuh_agent_after.json.data.affected_items[0].id }}
+                  ({{ wazuh_agent_after.json.data.affected_items[0].status }})
