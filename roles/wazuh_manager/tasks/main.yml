@@ -1,0 +1,8 @@
+---
+- name: Allow Wazuh manager ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ wazuh_manager_ports }}"

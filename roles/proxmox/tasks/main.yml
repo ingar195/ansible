@@ -1,12 +1,101 @@
 ---
-- name: Allow Proxmox Specific Ports
+- name: Find Proxmox enterprise repo files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: ["*.sources", "*.list"]
+    contains: '.*enterprise\.proxmox\.com' # find matches from the start of each line, so the URL needs the leading .*
+  register: proxmox_enterprise_repos
+
+- name: Disable enterprise repos (deb822 .sources)
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: '^Enabled:'
+    line: 'Enabled: false'
+    insertafter: '^Types:'
+  loop: "{{ proxmox_enterprise_repos.files | selectattr('path', 'search', '\\.sources$') | list }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: proxmox_repos_sources
+
+- name: Disable enterprise repos (.list)
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: '^(deb .*enterprise\.proxmox\.com.*)$'
+    replace: '# \1'
+  loop: "{{ proxmox_enterprise_repos.files | selectattr('path', 'search', '\\.list$') | list }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: proxmox_repos_list
+
+# Without the enterprise repos a node would get no Proxmox updates at all. Skipped
+# when a file on the node already carries the no-subscription repo, so nodes set up
+# by hand don't end up with the same repo twice. PVE and PBS use the same tasks,
+# only proxmox_nosub_repo differs (group_vars/pbs_vms).
+- name: Find existing no-subscription repo files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: ["*.sources", "*.list"]
+    contains: '.*{{ proxmox_nosub_repo.component }}'
+  register: proxmox_no_sub_files
+
+- name: Install python3-debian (needed by deb822_repository)
+  ansible.builtin.apt:
+    name: python3-debian
+    state: present
+  when: proxmox_no_sub_files.files | length == 0
+
+- name: Add the no-subscription repo
+  ansible.builtin.deb822_repository:
+    name: "{{ proxmox_nosub_repo.component }}"
+    types: deb
+    uris: "{{ proxmox_nosub_repo.uri }}"
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: "{{ proxmox_nosub_repo.component }}"
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+  when: proxmox_no_sub_files.files | length == 0
+  register: proxmox_no_sub_repo
+
+- name: Refresh apt cache after changing repos
+  ansible.builtin.apt:
+    update_cache: true
+  when: proxmox_repos_sources is changed or proxmox_repos_list is changed or proxmox_no_sub_repo is changed
+
+# Hides the "No valid subscription" login popup. ponytail: proxmox-widget-toolkit
+# upgrades overwrite this file; re-running the role re-applies it.
+- name: Disable subscription nag in web UI
+  ansible.builtin.replace:
+    path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+    regexp: "\\.status\\.toLowerCase\\(\\) !== 'active'(?! && false)"
+    replace: ".status.toLowerCase() !== 'active' && false"
+  notify: Restart Proxmox web service
+
+# This play runs before `common`, which is what normally installs ufw.
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow Proxmox public ports
   community.general.ufw:
     rule: allow
     port: "{{ item.port }}"
     proto: "{{ item.proto }}"
     comment: "{{ item.comment }}"
-  loop: "{{ soc_proxmox_ports }}"
-  
+  loop: "{{ proxmox_public_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto }}"
+
+- name: Allow cluster ports from the cluster networks only
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.0.port }}"
+    proto: "{{ item.0.proto }}"
+    from_ip: "{{ item.1 }}"
+    comment: "{{ item.0.comment }}"
+  loop: "{{ proxmox_cluster_ports | product(proxmox_cluster_nets) | list }}"
+  loop_control:
+    label: "{{ item.0.port }}/{{ item.0.proto }} from {{ item.1 }}"
+
 - name: Enable UFW Firewall
   community.general.ufw:
     state: enabled
