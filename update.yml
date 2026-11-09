@@ -10,3 +10,5 @@
   roles:
     - common
   tags: [update]
+
+- import_playbook: reboot_check.yml

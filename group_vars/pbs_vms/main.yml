@@ -1,0 +1,14 @@
+---
+# Backup servers run the same `proxmox` role as the PVE nodes (repos, UFW, web
+# UI popup); only the product-specific values differ.
+proxmox_nosub_repo:
+  uri: http://download.proxmox.com/debian/pbs
+  component: pbs-no-subscription
+proxmox_web_service: proxmox-backup-proxy
+
+proxmox_public_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }
+  - { port: '8007', proto: 'tcp', comment: 'Proxmox Backup Server Web Interface' }
+
+# No corosync or migration on a PBS.
+proxmox_cluster_ports: []

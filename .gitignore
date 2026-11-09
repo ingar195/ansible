@@ -4,3 +4,5 @@ hosts.ini
 inventory
 group_vars/**/vault.yml
 !group_vars/**/vault.example.yml
+# Wazuh agent package, copied by wazuh_agent_upgrade_5x.yml (15 MB, not for git)
+files/*.deb

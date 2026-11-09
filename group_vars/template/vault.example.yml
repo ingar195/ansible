@@ -1,0 +1,5 @@
+# Copy this file to vault.yml (gitignored, never commit real values).
+# Login password of the template VM's ansible_user. It is also used for sudo;
+# if the template's sudo password differs, split it into its own variable.
+# Needs `sshpass` on the control node, same as the other ssh passwords.
+vault_template_ssh_pass: REPLACE_ME
