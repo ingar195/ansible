@@ -6,7 +6,7 @@ tmp="$out.$$"
 
 # No -d: --scan labels SATA disks "scsi", which hides their model and ATA
 # attributes; letting smartctl auto-detect the type gets the full data.
-smartctl --scan -j | jq -r '.devices[].name' | while read -r dev; do
+smartctl --scan -j | jq -r '.devices[]?.name' | while read -r dev; do
   smartctl -j -a -n standby "$dev" | jq -r --arg dev "${dev#/dev/}" '
     def attr($id): (.ata_smart_attributes.table // [] | map(select(.id == $id)) | .[0].raw.value);
     (.nvme_smart_health_information_log // {}) as $n
