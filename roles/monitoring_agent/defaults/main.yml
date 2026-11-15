@@ -7,6 +7,10 @@ monitoring_server_ip: "10.13.0.20" # monitoring01
 # exist or is empty.
 monitoring_agent_custom_log_root: /var/log/apps
 
+# Every *.log under here is shipped too (container bind-mount logs); the first
+# subfolder becomes the `app` label. Harmless where the directory doesn't exist.
+monitoring_agent_docker_log_root: /opt/docker
+
 # SMART metrics (drive health, SSD wear) via Alloy's textfile collector. Only
 # set up on hosts that can see real disks -- VM virtual disks have no SMART.
 monitoring_agent_textfile_dir: /var/lib/alloy/textfile

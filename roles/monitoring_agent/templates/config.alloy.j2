@@ -129,3 +129,36 @@ loki.source.file "custom" {
   targets    = discovery.relabel.custom_logs.output
   forward_to = [loki.write.monitoring.receiver]
 }
+
+// Log files that containers write to their bind mounts (e.g. NPM's per-site
+// access logs), which the docker source above never sees. Only active *.log
+// files: rotated .gz and letsencrypt.log.N copies don't match. The first folder
+// under the root becomes the `app` label. No-op where the directory is absent.
+local.file_match "docker_files" {
+  path_targets = [{"__path__" = "{{ monitoring_agent_docker_log_root }}/**/*.log"}]
+}
+
+discovery.relabel "docker_files" {
+  targets = local.file_match.docker_files.targets
+
+  rule {
+    source_labels = ["__path__"]
+    regex         = "{{ monitoring_agent_docker_log_root }}/([^/]+)/.*"
+    target_label  = "app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "docker_files"
+  }
+
+  rule {
+    target_label = "host"
+    replacement  = "{{ ansible_hostname }}"
+  }
+}
+
+loki.source.file "docker_files" {
+  targets    = discovery.relabel.docker_files.output
+  forward_to = [loki.write.monitoring.receiver]
+}
