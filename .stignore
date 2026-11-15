@@ -1,0 +1,8 @@
+!/hosts.ini
+!/a.yml
+!/files/*.deb
+!/files
+!/group_vars/*/vault.yml
+!/group_vars/*
+!/group_vars
+*
