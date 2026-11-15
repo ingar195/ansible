@@ -6,3 +6,4 @@ group_vars/**/vault.yml
 !group_vars/**/vault.example.yml
 files/*.deb
 .stfolder
+.stversions
